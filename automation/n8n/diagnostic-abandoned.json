@@ -1,0 +1,30 @@
+{
+  "name": "Virada IA - Diagnostico abandonado",
+  "nodes": [
+    {
+      "name": "Event diagnostic.abandoned",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "virada/diagnostic-abandoned",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "name": "Wait 1 hour",
+      "type": "n8n-nodes-base.wait",
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      }
+    },
+    {
+      "name": "Send useful reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_URL}}/api/automation/reminder"
+      }
+    }
+  ],
+  "active": false
+}
