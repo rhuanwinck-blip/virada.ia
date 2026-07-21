@@ -1,0 +1,52 @@
+{
+  "name": "virada-ia",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/unit-tests.mjs",
+    "test:e2e": "node scripts/e2e-runner.mjs",
+    "db:migrate": "node scripts/db-migrate-check.mjs",
+    "db:types": "node scripts/db-types-check.mjs",
+    "seed": "node scripts/seed-demo.mjs",
+    "setup:check": "node scripts/setup-check.mjs",
+    "validate": "eslint . --max-warnings=0 && tsc --noEmit && node scripts/unit-tests.mjs && next build"
+  },
+  "dependencies": {
+    "@react-email/components": "^0.0.36",
+    "@react-email/render": "^1.1.2",
+    "@sentry/nextjs": "^9.31.0",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.53.0",
+    "framer-motion": "^12.23.12",
+    "jspdf": "^3.0.1",
+    "lucide-react": "^0.468.0",
+    "mercadopago": "^2.8.0",
+    "next": "^15.4.5",
+    "openai": "^5.10.2",
+    "posthog-js": "^1.260.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "resend": "^4.8.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
+    "@playwright/test": "^1.54.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint": "^9.32.0",
+    "eslint-config-next": "^15.4.5",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
