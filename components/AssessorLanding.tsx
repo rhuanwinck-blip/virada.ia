@@ -4,12 +4,11 @@ import Link from "next/link";
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import {
   ArrowRight,
+  Banknote,
   BellRing,
   CalendarClock,
   CheckCircle2,
-  Command,
   Fingerprint,
-  GitBranch,
   LockKeyhole,
   MessageSquareText,
   Mic,
@@ -17,92 +16,86 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  Target,
+  WalletCards,
   Zap
 } from "lucide-react";
 import {
+  AgentMesh,
   AssessorCore,
   AudioWave,
   AutomationFlow,
+  ConnectedAreaMap,
+  FinanceSignalGraph,
   HolographicPanel,
   MetricTile,
+  OpenFinanceFlow,
   PhoneCommandPreview,
-  StatusPill,
-  TimelineMap
+  StatusPill
 } from "@/components/AssessorVisuals";
-import {
-  buildMorningBriefing,
-  demoEvents,
-  demoMemories,
-  demoNotifications,
-  demoProjects,
-  demoRoutines,
-  demoTasks,
-  findFreeWindows,
-  integrations,
-  onboardingSteps
-} from "@/lib/assistant-core";
+import { buildFinancialOverview, sandboxAccounts, sandboxBills, sandboxTransactions } from "@/lib/financial-provider";
+import { demoAgents, demoAgendaItems, demoJourneyGoals, personalOsAreas, personalOsOnboardingSteps } from "@/lib/personal-os";
 
-const briefing = buildMorningBriefing();
-const freeWindows = findFreeWindows(demoEvents);
+const overview = buildFinancialOverview(sandboxAccounts, sandboxTransactions, sandboxBills);
 
-const scrollStory = [
+const productSections = [
+  ["Início", "Briefing, agenda, tarefas, contas próximas, saldo consolidado, projetos, riscos e ações sugeridas.", Route],
+  ["Sua Jornada", "Objetivos viram metas, metas viram plano, plano vira ação de hoje com revisão semanal.", Target],
+  ["Agenda", "Dia, semana, mês, tarefas, projetos, rotinas, lembretes, follow-ups e modo foco.", CalendarClock],
+  ["Finanças", "Extrato unificado, contas, cartões, faturas, orçamento, metas, investimentos e alertas.", WalletCards],
+  ["Open Finance", "Pluggy inicial, Belvo preparado, conexão oficial, consentimento, sandbox e revogação.", Banknote],
+  ["Agentes de IA", "Assessor, Planejador, Financeiro, Projetos, Comunicação e Follow-up com permissões.", MessageSquareText],
+  ["Lembretes no celular", "PWA, Web Push, e-mail, Google Calendar e WhatsApp preparado com consentimentos separados.", BellRing],
+  ["Briefing diário", "Manhã e noite com prioridades, conflitos, contas, faturas, metas e replanejamento.", Sparkles],
+  ["Replanejamento", "Se algo atrasar, a IA mostra impacto, sugere novo horário e pede confirmação.", RefreshCcw],
+  ["Memória", "Preferências, horários, locais, categorias e prioridades visíveis, editáveis e removíveis.", Fingerprint],
+  ["Segurança", "Somente leitura, sem senha bancária, sem token no navegador e sem movimentação financeira.", ShieldCheck]
+];
+
+const stickyStory = [
   {
-    label: "Entrada natural",
-    title: "A pessoa fala do jeito dela.",
-    body: "Audio, texto, ideia solta, prazo, cobranca ou compromisso entram na mesma central.",
-    flow: ["Mensagem", "Audio", "Arquivo"]
+    label: "Comando natural",
+    title: "“Pagar o seguro sexta.”",
+    body: "A frase entra como voz ou texto e vira um rascunho, não uma ação escondida.",
+    steps: ["Audio/texto", "Classificar", "Pedir confirmação"]
   },
   {
-    label: "Classificacao",
-    title: "O assessor entende o tipo de acao.",
-    body: "Tarefa, agenda, rotina, lembrete, follow-up, projeto ou nota aparecem como rascunho antes de criar.",
-    flow: ["Classificar", "Pedir detalhe", "Confirmar"]
+    label: "Finanças",
+    title: "Conta a pagar criada.",
+    body: "O compromisso financeiro guarda valor, categoria, vencimento e status sem alterar dado bancário bruto.",
+    steps: ["Conta", "Categoria", "Vencimento"]
   },
   {
-    label: "Agenda viva",
-    title: "O dia ganha horario, prioridade e contexto.",
-    body: "O sistema encontra janelas livres, conflitos e tarefas que cabem no tempo real.",
-    flow: ["Agenda", "Tarefas", "Tempo livre"]
+    label: "Agenda",
+    title: "A tarefa ganha horário e lembretes.",
+    body: "O sistema adiciona evento financeiro, lembrete antecipado e acompanhamento depois do prazo.",
+    steps: ["Agenda", "Lembrete", "Follow-up"]
   },
   {
-    label: "Proatividade",
-    title: "Ele volta antes de virar problema.",
-    body: "Lembra antes, cobra no horario, acompanha depois e sugere reagendamento se algo atrasar.",
-    flow: ["Antes", "Durante", "Depois"]
+    label: "Início",
+    title: "A Central mostra o impacto.",
+    body: "O briefing conecta conta, saldo sandbox, tarefa crítica e pergunta se deve ajustar seu dia.",
+    steps: ["Briefing", "Risco", "Ação sugerida"]
   }
 ];
 
-const sections = [
-  ["Demonstração por áudio", "Fale: 'amanha as 14h tenho dentista'. O assessor cria um rascunho com horario, duracao e pergunta se deve considerar deslocamento.", Mic],
-  ["Organização automática", "Entradas soltas viram agenda, tarefa, lembrete, rotina, projeto, follow-up ou nota.", Command],
-  ["Agenda e tarefas", "Dia, semana, recorrencias, conflitos, tempo livre e prioridade aparecem no mesmo mapa.", CalendarClock],
-  ["Lembretes no celular", "Push, painel, e-mail, WhatsApp e Calendar ficam sob consentimento e horario silencioso.", BellRing],
-  ["Briefing da manhã", briefing.greeting, Sparkles],
-  ["Replanejamento automático", "Se voce atrasar, nada e apagado. O assessor mostra impacto e pede confirmacao para reagendar.", RefreshCcw],
-  ["Projetos", "Objetivo, prazo, tarefas, progresso, arquivos, notas, responsaveis e proximos passos.", GitBranch],
-  ["Memória pessoal", "Preferencias, horarios, pessoas, locais e prioridades ficam visiveis, editaveis e removiveis.", Fingerprint],
-  ["Dashboard", "Central de comando holografica com Meu Dia, Assessor IA, Agenda, Tarefas e Follow-ups.", Route],
-  ["Integrações", "Google Calendar, WhatsApp Cloud API, OpenAI, Web Push e e-mail preparados para credenciais reais.", Zap],
-  ["Planos", "Compra libera onboarding, configuracao do primeiro dia e canais de notificacao.", CheckCircle2],
-  ["Segurança", "Nenhuma mensagem externa importante sai sem confirmacao explicita do usuario.", ShieldCheck],
-  ["FAQ", "Modo demo existe para validar produto sem fingir dados reais nem bloquear redesign por credencial.", MessageSquareText]
-];
-
 const faq = [
-  ["Ele envia WhatsApp sozinho?", "Nao. O WhatsApp oficial fica preparado, mas qualquer envio importante exige consentimento e configuracao."],
-  ["Funciona sem Google Calendar?", "Sim. O modo demo organiza agenda localmente e mostra exatamente quais variaveis faltam para conectar a agenda real."],
-  ["Posso apagar memorias?", "Sim. A memoria pessoal aparece em pagina propria para visualizar, editar e excluir."],
-  ["E se eu nao cumprir o dia?", "O assessor pergunta o que ficou pendente, mostra impacto e sugere um novo encaixe sem marcar nada como concluido sozinho."]
+  ["O Virada IA pede minha senha do banco?", "Não. O fluxo bancário usa o widget oficial do provider. O Virada IA recebe dados autorizados, somente leitura, e nunca pede senha bancária dentro do app."],
+  ["Os dados sandbox parecem reais?", "Não. Quando faltam credenciais ou o modo sandbox está ativo, a interface marca claramente que são dados de exemplo."],
+  ["Ele paga contas automaticamente?", "Não nesta fase. O sistema informa, lembra, organiza e acompanha, mas não movimenta dinheiro nem inicia pagamento."],
+  ["A IA recebe CPF ou cartão completo?", "Não. O agente financeiro usa dados agregados, normalizados, mascarados e minimizados."],
+  ["Posso revogar a conexão?", "Sim. A área Finanças > Conexões mostra status, consentimento, validade, atualizar, reconectar, revogar e remover dados."],
+  ["Funciona sem banco conectado?", "Sim. Contas manuais, metas, agenda e demonstração sandbox continuam funcionando sem fingir que são dados reais."]
 ];
 
 export function AssessorLanding() {
   const reduced = useReducedMotion();
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 82, damping: 24 });
-  const springY = useSpring(mouseY, { stiffness: 82, damping: 24 });
-  const rotateX = useTransform(springY, [-0.5, 0.5], [4, -4]);
-  const rotateY = useTransform(springX, [-0.5, 0.5], [-5, 5]);
+  const springX = useSpring(mouseX, { stiffness: 78, damping: 24 });
+  const springY = useSpring(mouseY, { stiffness: 78, damping: 24 });
+  const rotateX = useTransform(springY, [-0.5, 0.5], [3, -3]);
+  const rotateY = useTransform(springX, [-0.5, 0.5], [-4, 4]);
 
   function move(event: React.MouseEvent<HTMLElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -113,16 +106,15 @@ export function AssessorLanding() {
   return (
     <div className="site-shell command-theme">
       <div className="command-grid" />
-      <div className="blue-aurora" />
       <header className="topbar">
         <div className="container topbar-inner">
           <Link className="brand" href="/">
             <span className="brand-mark">V</span> Virada IA
           </Link>
-          <nav className="nav" aria-label="Navegacao principal">
-            <a href="#demo-audio">Audio</a>
-            <a href="#produto">Produto</a>
-            <a href="#integracoes">Integracoes</a>
+          <nav className="nav" aria-label="Navegação principal">
+            <a href="#como-funciona">Como funciona</a>
+            <a href="#financas">Finanças</a>
+            <a href="#seguranca">Segurança</a>
             <a href="#planos">Planos</a>
           </nav>
           <Link className="button secondary" href="/dashboard">
@@ -132,26 +124,23 @@ export function AssessorLanding() {
       </header>
 
       <main>
-        <section className="container assessor-hero" onMouseMove={move}>
+        <section className="container assessor-hero personal-os-hero" onMouseMove={move}>
           <motion.div className="hero-copy" initial={{ opacity: 1, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.62 }}>
             <span className="eyebrow">
-              <Sparkles size={15} /> Assessor pessoal proativo com IA
+              <Sparkles size={15} /> Sistema operacional pessoal com IA
             </span>
-            <h1>Um assessor pessoal. Sempre atento ao seu dia.</h1>
-            <p>
-              Fale o que precisa fazer. A inteligencia artificial organiza sua agenda, suas tarefas, seus compromissos e
-              lembra voce na hora certa.
-            </p>
+            <h1>Sua vida inteira. Organizada por uma inteligência que trabalha com você.</h1>
+            <p>Agenda, tarefas, objetivos e finanças em um único sistema inteligente que organiza, lembra, acompanha e adapta seu dia.</p>
             <div className="hero-actions">
               <Link className="button" href="/checkout">
-                Quero meu assessor pessoal <ArrowRight size={18} />
+                Conhecer meu sistema pessoal <ArrowRight size={18} />
               </Link>
-              <a className="button secondary" href="#produto">
+              <a className="button secondary" href="#como-funciona">
                 Ver como funciona
               </a>
             </div>
             <div className="microcopy">
-              {["Texto e audio", "Confirmacao antes de agir", "Modo demo sem credenciais"].map((item) => (
+              {["Cinco áreas conectadas", "Open Finance read-only", "Ações importantes com confirmação"].map((item) => (
                 <span key={item}>
                   <CheckCircle2 size={15} /> {item}
                 </span>
@@ -166,68 +155,59 @@ export function AssessorLanding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.62, delay: 0.08 }}
           >
-            <HolographicPanel className="command-center-card" label="Central do assessor">
+            <HolographicPanel className="command-center-card" label="Central viva">
               <div className="hero-console-grid">
-                <AssessorCore score={68} />
+                <AssessorCore score={74} label="Organização" />
                 <PhoneCommandPreview />
               </div>
               <div className="metric-grid">
-                <MetricTile label="Proximo" value="14:00" detail="Dentista com alerta 30 min antes" />
-                <MetricTile label="Livre" value="40 min" detail="Janela para orcamento" tone="blue" />
-                <MetricTile label="Critico" value="1" detail="Conta precisa de confirmacao" tone="amber" />
-                <MetricTile label="Conflitos" value="0" detail="Agenda atual sem sobreposicao" tone="cyan" />
+                <MetricTile label="Saldo" value={formatMoney(overview.consolidatedBalance.amount)} detail="consolidado sandbox" />
+                <MetricTile label="Agenda" value="3" detail="compromissos hoje" tone="blue" />
+                <MetricTile label="Conta" value="1" detail="vence em breve" tone="amber" />
+                <MetricTile label="Meta" value="34%" detail="carro conectado" tone="cyan" />
               </div>
             </HolographicPanel>
           </motion.div>
         </section>
 
-        <section className="section alt" id="demo-audio">
+        <section className="section alt" id="como-funciona">
           <div className="container dashboard-hero">
-            <HolographicPanel label="Audio para acao">
+            <HolographicPanel label="Demonstração por voz">
               <span className="eyebrow">
-                <Mic size={15} /> Demonstracao por audio
+                <Mic size={15} /> Entrada natural
               </span>
-              <h2 className="section-title">Diga uma frase. O assessor transforma em rascunho confirmado.</h2>
+              <h2 className="section-title">Fale como pessoa. O sistema transforma em agenda, tarefa, conta, meta ou follow-up.</h2>
               <p className="premium-copy">
-                Me lembra de ligar para o Joao sexta vira lembrete ou follow-up. Se faltar horario, ele pergunta antes de
-                criar.
+                “Amanhã às 14h tenho dentista”, “pagar o seguro sexta” e “quero juntar R$ 20.000 para comprar um carro” viram rascunhos com confirmação.
               </p>
               <AudioWave active />
-              <div className="notice">
-                Nenhuma acao externa importante e enviada sem confirmacao. O sistema primeiro prepara, mostra impacto e pede
-                autorizacao.
-              </div>
             </HolographicPanel>
-            <HolographicPanel label="Agenda preenchendo">
-              <TimelineMap events={demoEvents} tasks={demoTasks} />
+            <HolographicPanel label="Tudo conectado">
+              <ConnectedAreaMap areas={personalOsAreas} />
             </HolographicPanel>
           </div>
         </section>
 
-        <section className="section" id="produto">
+        <section className="section">
           <div className="container sticky-story">
             <div className="sticky-copy">
-              <span className="eyebrow">Storytelling do produto</span>
-              <h2 className="section-title">Do caos falado para um dia organizado.</h2>
+              <span className="eyebrow">Storytelling sticky</span>
+              <h2 className="section-title">Uma frase atravessa o sistema inteiro.</h2>
               <p className="premium-copy">
-                A landing mostra o produto trabalhando: entrada natural, classificacao, agenda viva e acompanhamento
-                proativo.
+                A promessa do Virada IA aparece no fluxo, não em cards soltos: IA, Finanças, Agenda, Início e Notificações conversam.
               </p>
-              <HolographicPanel label="Briefing da manha" compact>
-                <h3>{briefing.greeting}</h3>
-                <p className="premium-copy">
-                  Primeiro compromisso: {briefing.firstEvent.title} as {briefing.firstEvent.start}. Tarefa principal:{" "}
-                  {briefing.mainTask.title}.
-                </p>
+              <HolographicPanel compact label="Resumo gerado">
+                <h3>Seguro na sexta, fatura sandbox em aberto e bloco livre antes da reunião.</h3>
+                <p className="premium-copy">A Central pergunta se pode encaixar a tarefa do orçamento e criar lembrete antecipado.</p>
               </HolographicPanel>
             </div>
             <div className="story-stack">
-              {scrollStory.map((story, index) => (
+              {stickyStory.map((story, index) => (
                 <HolographicPanel key={story.title} label={story.label}>
                   <span className="step-num">{String(index + 1).padStart(2, "0")}</span>
                   <h3>{story.title}</h3>
                   <p className="premium-copy">{story.body}</p>
-                  <AutomationFlow steps={story.flow} />
+                  <AutomationFlow steps={story.steps} />
                 </HolographicPanel>
               ))}
             </div>
@@ -238,42 +218,13 @@ export function AssessorLanding() {
           <div className="container">
             <div className="section-header">
               <span className="eyebrow">
-                <BellRing size={15} /> Diferencial proativo
+                <Zap size={15} /> Produto completo
               </span>
-              <h2>Ele nao espera voce lembrar que esqueceu.</h2>
-              <p>
-                O assessor identifica conflito, sugere janelas livres, cobra antes do prazo, pergunta se algo foi concluido
-                e replaneja pendencias com confirmacao.
-              </p>
-            </div>
-            <div className="cards-grid">
-              {[
-                ["Conflitos", "Aviso antes de compromissos sobrepostos ou deslocamento apertado."],
-                ["Janelas livres", freeWindows[0] ? `${freeWindows[0].minutes} minutos livres para encaixar tarefa importante.` : "Detecta blocos livres no dia."],
-                ["Acompanhamento", "Depois do horario, pergunta se voce conseguiu comparecer ou concluir."],
-                ["Replanejamento", "Mostra impacto, sugere novo horario e espera sua confirmacao."],
-                ["Prioridade", "Se tudo parece urgente, destaca o que protege o dia."],
-                ["Resumo", "Fecha a noite com concluidos, pendentes, imprevistos e proximo dia."]
-              ].map(([title, body]) => (
-                <article className="info-card" key={title}>
-                  <h3>{title}</h3>
-                  <p>{body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="section">
-          <div className="container">
-            <div className="section-header">
-              <span className="eyebrow">
-                <Route size={15} /> Sistema completo
-              </span>
-              <h2>Todas as areas tem funcao real, sem abas vazias.</h2>
+              <h2>Não é dashboard administrativo. É uma central de comando pessoal.</h2>
+              <p>As seções abaixo são o próprio produto: Início, Jornada, Agenda, Finanças, Open Finance, Agentes, Lembretes, Briefing, Memória e Segurança.</p>
             </div>
             <div className="dashboard-module-grid">
-              {sections.map(([title, body, Icon]) => {
+              {productSections.map(([title, body, Icon]) => {
                 const TypedIcon = Icon as typeof Sparkles;
                 return (
                   <article className="info-card product-surface" key={String(title)}>
@@ -287,118 +238,138 @@ export function AssessorLanding() {
           </div>
         </section>
 
-        <section className="section alt">
+        <section className="section" id="financas">
           <div className="container dashboard-hero">
-            <HolographicPanel label="Projetos">
-              {demoProjects.map((project) => (
-                <article className="project-row" key={project.id}>
-                  <div>
-                    <h3>{project.title}</h3>
-                    <p>{project.goal}</p>
-                  </div>
-                  <strong>{project.progress}%</strong>
-                </article>
-              ))}
+            <HolographicPanel label="Finanças + Open Finance">
+              <span className="eyebrow">
+                <Banknote size={15} /> Pluggy inicial · Belvo preparado
+              </span>
+              <h2 className="section-title">Contas bancárias entram por consentimento oficial, nunca por senha dentro do Virada IA.</h2>
+              <p className="premium-copy">
+                O backend cria token temporário, abre o widget oficial, valida conexão por API/webhook, sincroniza dados e mantém o agente financeiro em leitura.
+              </p>
+              <OpenFinanceFlow activeStep={5} />
             </HolographicPanel>
-            <HolographicPanel label="Rotinas e memoria">
+            <HolographicPanel label="Extrato e sinal financeiro">
+              <FinanceSignalGraph values={[22, 34, 28, 42, 38, 58, 49, 68, 61, 74, 69, 88]} />
               <div className="stack-list">
-                {demoRoutines.slice(0, 2).map((routine) => (
-                  <div className="stack-item" key={routine.id}>
-                    <strong>{routine.title}</strong>
-                    <span>{routine.schedule}</span>
-                  </div>
-                ))}
-                {demoMemories.slice(0, 3).map((memory) => (
-                  <div className="stack-item" key={memory.id}>
-                    <strong>{memory.label}</strong>
-                    <span>{memory.value}</span>
-                  </div>
-                ))}
+                <div className="stack-item">
+                  <strong>Saldo consolidado</strong>
+                  <span>{formatMoney(overview.consolidatedBalance.amount)} · sandbox</span>
+                </div>
+                <div className="stack-item">
+                  <strong>Assinaturas prováveis</strong>
+                  <span>{overview.subscriptions.length} recorrências detectadas sem cancelar nada automaticamente.</span>
+                </div>
               </div>
             </HolographicPanel>
           </div>
         </section>
 
-        <section className="section" id="integracoes">
-          <div className="container">
-            <div className="section-header">
-              <span className="eyebrow">
-                <Zap size={15} /> Integracoes preparadas
-              </span>
-              <h2>Credenciais reais conectam canais. O redesign nao fica bloqueado por elas.</h2>
-            </div>
-            <div className="cards-grid">
-              {integrations.map((integration) => (
-                <article className="info-card" key={integration.id}>
-                  <StatusPill tone={integration.status === "ready" ? "cyan" : integration.status === "demo" ? "blue" : "amber"}>
-                    {integration.status}
-                  </StatusPill>
-                  <h3>{integration.label}</h3>
-                  <p>{integration.description}</p>
-                  <small>{integration.requiredEnv.join(" · ")}</small>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="section alt" id="planos">
-          <div className="container">
-            <div className="section-header center">
-              <span className="eyebrow">Compra e ativacao</span>
-              <h2>Depois da compra, o assessor configura o primeiro dia.</h2>
-              <p>Onboarding com nome, horarios, notificacoes, WhatsApp, compromissos fixos e tres prioridades.</p>
-            </div>
-            <HolographicPanel label="Sequencia de onboarding">
-              <AutomationFlow steps={onboardingSteps} />
+        <section className="section alt">
+          <div className="container dashboard-hero">
+            <HolographicPanel label="Agentes de IA">
+              <AgentMesh agents={demoAgents} />
             </HolographicPanel>
-            <div className="offer-grid" style={{ marginTop: 16 }}>
-              <article className="price-card">
-                <StatusPill>Essencial</StatusPill>
-                <h3>Assessor Pessoal</h3>
-                <div className="price">R$ 47</div>
-                <p>Central, Meu Dia, tarefas, agenda, lembretes e modo demo completo.</p>
-                <Link className="button" href="/checkout">
-                  Quero meu assessor pessoal
-                </Link>
-              </article>
-              <article className="price-card featured">
-                <StatusPill tone="amber">Proativo</StatusPill>
-                <h3>Assessor Pro</h3>
-                <div className="price">R$ 59,90/mês</div>
-                <p>Briefings, follow-ups, integracoes, WhatsApp, replanejamento e historico.</p>
-                <Link className="button" href="/checkout?plan=pro">
-                  Ativar plano Pro
-                </Link>
-              </article>
-            </div>
+            <HolographicPanel label="Contexto autorizado">
+              <div className="stack-list">
+                {demoAgents.slice(0, 4).map((agent) => (
+                  <div className="stack-item" key={agent.id}>
+                    <strong>{agent.label}</strong>
+                    <span>{agent.currentSuggestion}</span>
+                  </div>
+                ))}
+              </div>
+            </HolographicPanel>
           </div>
         </section>
 
         <section className="section">
           <div className="container dashboard-hero">
-            <HolographicPanel label="Seguranca">
-              <span className="eyebrow">
-                <LockKeyhole size={15} /> Controle do usuario
-              </span>
-              <h2 className="section-title">Memoria e notificacoes sob seu controle.</h2>
+            <HolographicPanel label="Briefing diário">
+              <h2 className="section-title">Todo dia começa com contexto, não com tela vazia.</h2>
               <p className="premium-copy">
-                O assessor pode sugerir, organizar e preparar. Enviar mensagem externa, alterar calendario conectado ou
-                acionar terceiros exige autorizacao.
+                O briefing reúne compromissos, tarefas prioritárias, contas próximas, fatura, progresso das metas, hábitos, projetos e ações sugeridas.
               </p>
-            </HolographicPanel>
-            <HolographicPanel label="Canais">
               <div className="stack-list">
-                {demoNotifications.map((notification) => (
-                  <div className="stack-item" key={notification.id}>
-                    <strong>{notification.title}</strong>
-                    <span>
-                      {notification.channel} · {notification.consent ? "ativo" : "aguardando consentimento"}
-                    </span>
+                {demoAgendaItems.slice(0, 3).map((item) => (
+                  <div className="stack-item" key={item.id}>
+                    <strong>{item.title}</strong>
+                    <span>{item.date} · {item.kind} · {item.status}</span>
                   </div>
                 ))}
               </div>
             </HolographicPanel>
+            <HolographicPanel label="Sua Jornada">
+              <div className="stack-list">
+                {demoJourneyGoals.map((goal) => (
+                  <div className="stack-item" key={goal.id}>
+                    <strong>{goal.title}</strong>
+                    <span>{goal.target} · {goal.progress}% · {goal.nextAction}</span>
+                  </div>
+                ))}
+              </div>
+            </HolographicPanel>
+          </div>
+        </section>
+
+        <section className="section alt" id="seguranca">
+          <div className="container">
+            <div className="section-header">
+              <span className="eyebrow">
+                <LockKeyhole size={15} /> Segurança e consentimento
+              </span>
+              <h2>Segredos ficam no backend. O usuário controla memória, consentimento e revogação.</h2>
+            </div>
+            <div className="cards-grid">
+              {[
+                ["Sem senha bancária", "Autenticação acontece no fluxo oficial do provider e da instituição."],
+                ["Somente leitura", "Sem iniciação de pagamento, transferência, compra, venda ou crédito."],
+                ["Dados minimizados", "CPF, token, conta completa e cartão completo não vão para o modelo."],
+                ["Webhook seguro", "Assinatura, replay window, idempotência e payload sanitizado."],
+                ["LGPD", "Consentimento, revogação, exclusão, auditoria, exportação e retenção documentadas."],
+                ["Sandbox claro", "Demonstração nunca aparece como dado real."]
+              ].map(([title, body]) => (
+                <article className="info-card" key={title}>
+                  <ShieldCheck size={22} />
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="planos">
+          <div className="container">
+            <div className="section-header center">
+              <span className="eyebrow">Onboarding após cadastro</span>
+              <h2>Depois do pagamento, o sistema configura o primeiro dia.</h2>
+              <p>Open Finance é opcional e explicado antes de qualquer conexão.</p>
+            </div>
+            <HolographicPanel label="Sequência de ativação">
+              <AutomationFlow steps={personalOsOnboardingSteps} />
+            </HolographicPanel>
+            <div className="offer-grid" style={{ marginTop: 16 }}>
+              <article className="price-card">
+                <StatusPill>Essencial</StatusPill>
+                <h3>Personal OS</h3>
+                <div className="price">R$ 47</div>
+                <p>Início, Jornada, Agenda, Finanças sandbox, agentes e onboarding completo.</p>
+                <Link className="button" href="/checkout">
+                  Conhecer meu sistema pessoal
+                </Link>
+              </article>
+              <article className="price-card featured">
+                <StatusPill tone="amber">Proativo</StatusPill>
+                <h3>Personal OS Pro</h3>
+                <div className="price">R$ 59,90/mês</div>
+                <p>Briefings, follow-ups, integrações, notificações e histórico avançado.</p>
+                <Link className="button" href="/checkout?plan=pro">
+                  Ativar plano Pro
+                </Link>
+              </article>
+            </div>
           </div>
         </section>
 
@@ -422,10 +393,10 @@ export function AssessorLanding() {
         <section className="section">
           <div className="container">
             <div className="section-header center">
-              <span className="eyebrow">Central pronta</span>
-              <h2>Fale o que precisa fazer. Seu assessor organiza o resto.</h2>
+              <span className="eyebrow">CTA final</span>
+              <h2>Sua vida inteira. Uma central inteligente trabalhando com você.</h2>
               <Link className="button" href="/checkout">
-                Quero meu assessor pessoal <ArrowRight size={18} />
+                Conhecer meu sistema pessoal <ArrowRight size={18} />
               </Link>
             </div>
           </div>
@@ -436,11 +407,14 @@ export function AssessorLanding() {
         <div className="container footer-inner">
           <span>© 2026 Virada IA</span>
           <span>
-            <a href="/legal/privacidade">Privacidade</a> · <a href="/legal/termos">Termos</a> ·{" "}
-            <a href="/legal/cookies">Cookies</a>
+            <a href="/legal/privacidade">Privacidade</a> · <a href="/legal/termos">Termos</a> · <a href="/legal/cookies">Cookies</a>
           </span>
         </div>
       </footer>
     </div>
   );
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }

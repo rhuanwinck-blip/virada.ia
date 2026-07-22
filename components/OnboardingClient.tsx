@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BellRing, CalendarClock, Check, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Banknote, BellRing, CalendarClock, Check, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { AssessorCore, HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
-import { onboardingSteps } from "@/lib/assistant-core";
+import { personalOsOnboardingSteps } from "@/lib/personal-os";
 
 export function OnboardingClient() {
   const [step, setStep] = useState(0);
-  const progress = Math.round(((step + 1) / onboardingSteps.length) * 100);
+  const progress = Math.round(((step + 1) / personalOsOnboardingSteps.length) * 100);
 
   return (
     <main className="result-shell command-theme">
@@ -21,9 +21,9 @@ export function OnboardingClient() {
         <section className="dashboard-hero" style={{ marginTop: 28 }}>
           <HolographicPanel className="dashboard-card" label="Ativacao do assessor">
             <span className="eyebrow">
-              <Sparkles size={15} /> Etapa {step + 1} de {onboardingSteps.length}
+              <Sparkles size={15} /> Etapa {step + 1} de {personalOsOnboardingSteps.length}
             </span>
-            <h1>{onboardingSteps[step]}</h1>
+            <h1>{personalOsOnboardingSteps[step]}</h1>
             <p className="premium-copy">{copyByStep(step)}</p>
             <div className="progress-track" aria-label={`Progresso ${progress}%`}>
               <span style={{ width: `${progress}%` }} />
@@ -34,7 +34,7 @@ export function OnboardingClient() {
                 <button className="button secondary" type="button" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
                   Voltar
                 </button>
-                {step < onboardingSteps.length - 1 ? (
+              {step < personalOsOnboardingSteps.length - 1 ? (
                   <button className="button" type="button" onClick={() => setStep((value) => value + 1)}>
                     Continuar <ArrowRight size={17} />
                   </button>
@@ -50,7 +50,7 @@ export function OnboardingClient() {
           <HolographicPanel label="Nucleo ativando">
             <AssessorCore score={progress} label="Ativacao" />
             <div className="stack-list">
-              {onboardingSteps.map((item, index) => (
+              {personalOsOnboardingSteps.map((item, index) => (
                 <div className={`stack-item ${index <= step ? "done" : ""}`} key={item}>
                   <strong>{item}</strong>
                   <span>{index < step ? "Concluido" : index === step ? "Atual" : "Aguardando"}</span>
@@ -74,7 +74,7 @@ function renderStep(step: number) {
     );
   }
 
-  if (step === 4) {
+  if (step === 7) {
     return (
       <div className="info-card">
         <CalendarClock color="#58c7ff" />
@@ -85,7 +85,7 @@ function renderStep(step: number) {
     );
   }
 
-  if (step === 5) {
+  if (step === 8) {
     return (
       <div className="info-card">
         <BellRing color="#58c7ff" />
@@ -98,7 +98,7 @@ function renderStep(step: number) {
     );
   }
 
-  if (step === 6) {
+  if (step === 9) {
     return (
       <div className="info-card">
         <MessageCircle color="#58c7ff" />
@@ -111,12 +111,46 @@ function renderStep(step: number) {
     );
   }
 
-  if (step === 9 || step === 10) {
+  if (step === 10) {
+    return (
+      <div className="info-card">
+        <Banknote color="#58c7ff" />
+        <h3>Open Finance opcional</h3>
+        <p>
+          O Virada IA cria um token temporário no backend e abre o fluxo oficial do provider. A conexão é somente leitura,
+          pode ser revogada e não pede senha bancária dentro do app.
+        </p>
+        <div className="notice">
+          Dados acessados: contas, saldos, transações, cartões, faturas e investimentos quando disponíveis. Finalidade:
+          organizar sua vida financeira, alertar vencimentos e alimentar o agente financeiro com dados mascarados.
+        </div>
+        <label className="checkbox-line">
+          <input type="checkbox" /> Quero conectar bancos depois.
+        </label>
+        <StatusPill tone="amber">Sandbox até validar credenciais Pluggy</StatusPill>
+      </div>
+    );
+  }
+
+  if (step === 11) {
+    return (
+      <div className="info-card">
+        <ShieldCheck color="#58c7ff" />
+        <h3>Contas manuais opcionais</h3>
+        <p>Você pode cadastrar contas a pagar, contas a receber, orçamento e metas mesmo sem banco conectado.</p>
+        <label className="checkbox-line">
+          <input type="checkbox" defaultChecked /> Criar seguro auto como conta a pagar e lembrete na agenda.
+        </label>
+      </div>
+    );
+  }
+
+  if (step === 13 || step === 14) {
     return (
       <div className="info-card">
         <Check color="#58c7ff" />
         <h3>Primeiro dia gerado</h3>
-        <p>Briefing inicial: 3 compromissos, 4 tarefas, uma pendencia critica e uma janela livre para o orcamento.</p>
+        <p>Briefing inicial: 3 compromissos, 4 tarefas, uma fatura sandbox, seguro na agenda e uma janela livre para o orçamento.</p>
       </div>
     );
   }
@@ -133,27 +167,45 @@ function renderStep(step: number) {
 
 function copyByStep(step: number) {
   const copy = [
-    "Vamos acender a central e preparar as permissoes sem enviar nada para fora.",
-    "O assessor usa seu nome apenas para personalizar briefing e conversa.",
-    "Horario de trabalho ajuda a encontrar janelas livres sem lotar seu dia.",
-    "Horario silencioso impede alertas fora do periodo permitido.",
-    "Conecte calendario para eventos reais ou continue no modo demo.",
-    "Ative notificacoes com consentimento e antecedencia controlada.",
-    "WhatsApp oficial e opcional e nunca envia mensagem sem autorizacao.",
-    "Compromissos fixos protegem academia, reunioes e recorrencias.",
-    "Tres prioridades ajudam a IA a decidir quando tudo parece urgente.",
-    "O primeiro dia sera montado com agenda, tarefas e tempo livre.",
-    "Veja a primeira notificacao e abra a Central."
+    "Vamos acender a central e preparar permissões sem executar nada fora do app.",
+    "Seu nome personaliza briefing, conversa e notificações.",
+    "Objetivos dão contexto para metas, agenda, finanças e agentes.",
+    "Horários de trabalho ajudam a encontrar janelas livres sem lotar seu dia.",
+    "Compromissos fixos protegem rotina, deslocamento e recorrências.",
+    "Rotina define hábitos, versões reduzidas e revisão da noite.",
+    "Horário silencioso impede alertas fora do período permitido.",
+    "Conecte calendário para eventos reais ou continue no modo demo.",
+    "Ative notificações com consentimento e antecedência controlada.",
+    "WhatsApp oficial é opcional e nunca envia mensagem sem autorização.",
+    "Open Finance é opcional, somente leitura e feito pelo fluxo oficial do provider.",
+    "Contas manuais cobrem boletos, recebíveis e orçamento sem banco conectado.",
+    "A primeira meta une Sua Jornada e Finanças.",
+    "O primeiro dia será montado com agenda, tarefas, finanças e tempo livre.",
+    "Veja o primeiro briefing e abra sua Central."
   ];
   return copy[step] ?? copy[0];
 }
 
 function fieldLabel(step: number) {
-  const labels = ["", "Nome", "Horario de trabalho", "Horario silencioso", "", "", "", "Compromissos fixos", "Tres prioridades"];
+  const labels = ["", "Nome", "Objetivos", "Horário de trabalho", "Compromissos fixos", "Rotina", "Horário silencioso", "", "", "", "", "", "Primeira meta"];
   return labels[step] ?? "Resposta";
 }
 
 function fieldDefault(step: number) {
-  const defaults = ["", "Rhuan", "09:00 as 18:00", "22:00 as 07:00", "", "", "", "Academia segunda, quarta e sexta", "Orcamento, estudos, contas"];
+  const defaults = [
+    "",
+    "Rhuan",
+    "Renda extra, carro, rotina estável",
+    "09:00 às 18:00",
+    "Academia segunda, quarta e sexta",
+    "Revisar prioridades 08:00; resumo da noite 21:30",
+    "22:00 às 07:00",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Juntar R$ 20.000 para comprar um carro"
+  ];
   return defaults[step] ?? "";
 }

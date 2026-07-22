@@ -8,9 +8,10 @@ import {
   AssistantEvent,
   AssistantNavigationItem,
   AssistantTask,
-  assistantNavigation,
-  onboardingSteps
+  assistantNavigation
 } from "@/lib/assistant-core";
+import { personalOsOnboardingSteps } from "@/lib/personal-os";
+import type { AiAgent, PersonalOsArea } from "@/lib/personal-os";
 
 export function HolographicPanel({
   children,
@@ -342,7 +343,7 @@ export function ActivationOverlay({ open, onClose }: { open: boolean; onClose: (
             </span>
             <h2>Seu assessor pessoal esta pronto para configurar o primeiro dia.</h2>
             <div className="activation-steps">
-              {onboardingSteps.slice(0, 6).map((step) => (
+              {personalOsOnboardingSteps.slice(0, 6).map((step) => (
                 <span key={step}>
                   <Check size={14} /> {step}
                 </span>
@@ -363,6 +364,122 @@ export function LoadingSync() {
     <div className="premium-skeleton" aria-label="Carregando">
       <Loader2 size={22} />
       <span>Sincronizando agenda, tarefas e memoria</span>
+    </div>
+  );
+}
+
+export function ConnectedAreaMap({ areas }: { areas: PersonalOsArea[] }) {
+  return (
+    <div className="connected-area-map" aria-label="Mapa de areas conectadas">
+      <motion.div
+        className="connected-area-map__core"
+        animate={{ scale: [1, 1.04, 1] }}
+        transition={{ duration: 4.8, repeat: Infinity }}
+      >
+        IA
+      </motion.div>
+      {areas.map((area, index) => (
+        <motion.div
+          className={`connected-area-map__node node-${index + 1}`}
+          key={area.id}
+          initial={{ opacity: 1, scale: 0.96 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.35, delay: index * 0.06 }}
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <strong>{area.label}</strong>
+          <small>{area.description}</small>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+export function OpenFinanceFlow({ activeStep = 3 }: { activeStep?: number }) {
+  const steps = [
+    "Token backend",
+    "Widget oficial",
+    "Consentimento",
+    "Validação backend",
+    "Sincronização",
+    "Agente financeiro"
+  ];
+
+  return (
+    <div className="open-finance-flow" aria-label="Fluxo Open Finance">
+      {steps.map((step, index) => (
+        <motion.div
+          className={`open-finance-flow__step ${index <= activeStep ? "active" : ""}`}
+          key={step}
+          animate={index === activeStep ? { y: [0, -4, 0] } : undefined}
+          transition={{ duration: 2.4, repeat: Infinity }}
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <strong>{step}</strong>
+          <small>{index <= activeStep ? "verificado" : "aguardando"}</small>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+export function FinanceSignalGraph({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+  const points = values.map((value, index) => {
+    const x = 16 + index * (268 / Math.max(values.length - 1, 1));
+    const y = 150 - (value / max) * 112;
+    return `${x},${y}`;
+  });
+
+  return (
+    <div className="finance-signal-graph" aria-label="Grafico financeiro animado">
+      <svg viewBox="0 0 304 168" role="img">
+        <defs>
+          <linearGradient id="financeLine" x1="0" x2="1">
+            <stop stopColor="#27DBFF" />
+            <stop offset="1" stopColor="#806BFF" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2, 3].map((line) => (
+          <line key={line} x1="10" x2="294" y1={32 + line * 34} y2={32 + line * 34} className="finance-grid-line" />
+        ))}
+        <motion.polyline
+          points={points.join(" ")}
+          fill="none"
+          stroke="url(#financeLine)"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          whileInView={{ pathLength: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.2 }}
+        />
+        {points.map((point) => {
+          const [x, y] = point.split(",");
+          return <circle key={point} cx={x} cy={y} r="4" className="finance-dot" />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export function AgentMesh({ agents }: { agents: AiAgent[] }) {
+  return (
+    <div className="agent-mesh" aria-label="Malha de agentes de IA">
+      {agents.map((agent, index) => (
+        <motion.article
+          className="agent-mesh__node"
+          key={agent.id}
+          whileHover={{ y: -4 }}
+          transition={{ duration: 0.16 }}
+        >
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <strong>{agent.label}</strong>
+          <small>{agent.permissions.join(" + ")}</small>
+        </motion.article>
+      ))}
     </div>
   );
 }

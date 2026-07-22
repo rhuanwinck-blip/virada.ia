@@ -29,6 +29,9 @@ export type AssistantActionType =
   | "routine"
   | "project"
   | "follow_up"
+  | "financial_query"
+  | "financial_commitment"
+  | "financial_goal"
   | "note";
 
 export type AssistantPriority = "critica" | "alta" | "media" | "baixa";
@@ -122,7 +125,7 @@ export type AssistantNotification = {
 };
 
 export type IntegrationState = {
-  id: "google_calendar" | "whatsapp" | "push" | "email" | "openai";
+  id: "google_calendar" | "whatsapp" | "push" | "email" | "openai" | "open_finance";
   label: string;
   status: "demo" | "ready" | "needs_credentials" | "connected";
   description: string;
@@ -330,6 +333,13 @@ export const integrations: IntegrationState[] = [
     requiredEnv: ["OPENAI_API_KEY"]
   },
   {
+    id: "open_finance",
+    label: "Open Finance Pluggy",
+    status: "ready",
+    description: "Conexao bancaria oficial, somente leitura, com sandbox claro quando faltarem credenciais reais.",
+    requiredEnv: ["FINANCIAL_DATA_PROVIDER", "PLUGGY_CLIENT_ID", "PLUGGY_CLIENT_SECRET", "OPEN_FINANCE_SANDBOX"]
+  },
+  {
     id: "google_calendar",
     label: "Google Calendar",
     status: "ready",
@@ -484,6 +494,9 @@ export function replanOverdueItems(tasks = demoTasks) {
 }
 
 function inferActionType(lower: string): AssistantActionType {
+  if (/(quanto gastei|gastei com|saldo|extrato|fatura|contas vencem|quais contas)/.test(lower)) return "financial_query";
+  if (/(juntar|economizar|meta financeira|comprar um carro|valor-alvo|valor alvo)/.test(lower)) return "financial_goal";
+  if (/(pagar|boleto|seguro|conta|vence|vencimento|receber)/.test(lower)) return "financial_commitment";
   if (/(cobrar|resposta|retorno|fornecedor|cliente)/.test(lower)) return "follow_up";
   if (/(todo|toda|diariamente|semanal|mensal)/.test(lower)) return "routine";
   if (/(reuniao|dentista|consulta|compromisso|agenda|evento|participante)/.test(lower)) return "event";
@@ -537,6 +550,9 @@ function buildTitle(text: string, type: AssistantActionType) {
     routine: "Nova rotina",
     project: "Novo projeto",
     follow_up: "Novo follow-up",
+    financial_query: "Nova consulta financeira",
+    financial_commitment: "Novo compromisso financeiro",
+    financial_goal: "Nova meta financeira",
     note: "Nova anotacao"
   };
   return fallback[type];
@@ -550,6 +566,9 @@ function buildSummary(type: AssistantActionType, title: string, dateLabel: strin
     routine: "rotina recorrente",
     project: "projeto",
     follow_up: "follow-up",
+    financial_query: "consulta financeira",
+    financial_commitment: "compromisso financeiro",
+    financial_goal: "meta financeira",
     note: "anotacao"
   };
   const parts = [`Transformei isso em ${labels[type]}: ${title}`, dateLabel !== "Sem data definida" ? dateLabel : ""];
@@ -564,6 +583,8 @@ function getMissingFields(type: AssistantActionType, dateLabel: string, time: st
   if (["event", "reminder", "routine"].includes(type) && !time) missing.push("horario");
   if (type === "event" && !/(local|em |no |na )/.test(lower)) missing.push("local opcional");
   if (type === "project" && !/(ate|prazo|quarta|sexta|amanha|hoje)/.test(lower)) missing.push("prazo");
+  if (type === "financial_commitment" && dateLabel === "Sem data definida" && !/(vence|vencimento|sexta|quinta|quarta|amanha|hoje)/.test(lower)) missing.push("vencimento");
+  if (type === "financial_goal" && !/(r\$|\d)/.test(lower)) missing.push("valor-alvo");
   return missing;
 }
 
@@ -576,7 +597,7 @@ function buildFollowUpQuestion(missing: string[]) {
 }
 
 function inferPriority(lower: string, type: AssistantActionType): AssistantPriority {
-  if (/(urgente|critico|critica|hoje|conta|prazo|vence)/.test(lower)) return "critica";
+  if (/(urgente|critico|critica|hoje|conta|prazo|vence|fatura|boleto|pagar|seguro)/.test(lower)) return "critica";
   if (/(orcamento|proposta|cliente|reuniao|fornecedor)/.test(lower)) return "alta";
   if (type === "note") return "baixa";
   return "media";
