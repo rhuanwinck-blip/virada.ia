@@ -1,0 +1,12 @@
+{
+  "name": "Virada IA - Assessor pessoal",
+  "short_name": "Virada IA",
+  "description": "Assessor pessoal proativo com IA para agenda, tarefas, lembretes e replanejamento.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020611",
+  "theme_color": "#0A5CFF",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"]
+}

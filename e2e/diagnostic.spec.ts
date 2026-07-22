@@ -1,19 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("complete free diagnostic flow", async ({ page }) => {
+test("organize a natural-language command in the proactive assistant", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /descobrir meu ponto de virada/i }).first().click();
+  await expect(page.getByRole("heading", { name: /um assessor pessoal/i })).toBeVisible();
+  await page.getByRole("link", { name: /abrir demo/i }).click();
 
-  for (let index = 0; index < 18; index += 1) {
-    await page.getByRole("button", { name: /4\s+Muito/i }).click();
-    await page.getByRole("button", { name: "Avançar", exact: true }).click();
-  }
+  await expect(page.getByRole("heading", { name: /fale o que precisa fazer/i })).toBeVisible();
+  await page.getByLabel("Mensagem para o assessor").fill("Me lembra de ligar para o Joao sexta.");
+  await page.getByRole("button", { name: /organizar/i }).click();
 
-  await page.getByRole("button", { name: /Tenho direção/i }).click();
-  await page.getByRole("button", { name: "Avançar", exact: true }).click();
-
-  await page.getByRole("textbox", { name: "Nome", exact: true }).fill("Demo Virada");
-  await page.getByRole("textbox", { name: "E-mail", exact: true }).fill("demo@viradaia.local");
-  await page.getByRole("button", { name: /ver resultado gratuito/i }).click();
-  await expect(page.getByText(/resultado gratuito/i).first()).toBeVisible();
+  await expect(page.getByText(/ligar para o Joao sexta/i).first()).toBeVisible();
+  await expect(page.getByText(/qual horario fica melhor/i).first()).toBeVisible();
+  await page.getByRole("button", { name: /confirmar/i }).click();
+  await expect(page.getByText(/confirmado/i).first()).toBeVisible();
 });

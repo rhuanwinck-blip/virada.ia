@@ -1,25 +1,23 @@
 # Virada IA
 
-Sistema brasileiro de evolução pessoal orientado por inteligência artificial.
+Assessor pessoal proativo com inteligencia artificial.
 
-Promessa: **você não precisa mudar tudo. Precisa descobrir o que mudar primeiro.**
+Promessa: **Fale o que precisa fazer. Seu assessor organiza o resto.**
 
-## O que está implementado
+## O Que Esta Implementado
 
-- Landing page premium com hero imersivo, narrativa de scroll, radar, scanner, fluxo de dados, demonstração e CTA final.
-- Questionário inteligente com captura de contato, consentimento separado e leitura visual em tempo real.
-- Motor determinístico de scoring, confiança, contradições, bloqueios e plano de 30 dias.
-- Resultado gratuito reconstruído com mapa de pilares, evidências, limitações, prévia bloqueada e oferta transparente.
-- Checkout em modo demonstração e wrapper preparado para Mercado Pago.
-- Experiência de pagamento aprovado com overlay premium de desbloqueio.
-- Dashboard completo com sidebar, command palette, navegação mobile, missão de hoje, plano, diagnóstico, pilares, padrões, prioridades, metas, rotina, hábitos, foco, finanças educacionais, check-ins, evolução, IA, recomendações, replanejamento, relatórios, conquistas, biblioteca, assinatura, configurações e ajuda.
-- Painel admin redesenhado com módulos para funil, usuários, diagnósticos, conteúdo, perguntas, scoring, prompts, recomendações, preços, planos, feature flags, testes A/B, erros e auditoria.
-- API routes para score, checkout, webhook, relatório PDF, health, exportação e exclusão.
-- Supabase schema inicial e migration incremental para as novas áreas do produto, com RLS e índices.
-- React Email/Resend, PostHog, Sentry, OpenAI, Mercado Pago e n8n preservados por contrato.
-- Estados de loading/erro premium, reduced motion, testes unitários, Playwright e CI GitHub Actions.
+- Landing page futurista azul/ciano com conversa, audio, agenda preenchendo, briefing, replanejamento, memoria, integracoes, planos, seguranca e FAQ.
+- Dashboard reconstruido com as 15 areas pedidas: Central, Meu Dia, Assessor IA, Agenda, Tarefas, Projetos, Rotinas, Caixa de Entrada, Foco, Follow-ups, Memoria, Notificacoes, Integracoes, Assinatura e Configuracoes.
+- Chat central por texto e audio demo, com classificacao em tarefa, compromisso, lembrete, rotina, projeto, follow-up ou nota.
+- Confirmacao obrigatoria antes de criar ou preparar acoes importantes.
+- Meu Dia visual com horario atual, agenda, tarefas prioritarias, tempo livre, conflitos, recomendacao da IA e progresso do dia.
+- Onboarding pos-compra com ativacao do assessor, horarios, Google Calendar, notificacoes, WhatsApp, compromissos fixos, prioridades e primeiro dia.
+- APIs demo/ready para organizar comandos, preparar Google Calendar, registrar push e preparar WhatsApp sem enviar nada externo sem consentimento.
+- PWA com manifest e service worker.
+- Nova migration Supabase para tasks, events, reminders, projects, project_tasks, inbox_items, follow_ups, user_memories, push_subscriptions, integrations, assistant_messages, daily_briefings e daily_reviews.
+- Checkout, webhook de pagamento, seguranca e infraestrutura existente preservados.
 
-## Rodar localmente
+## Rodar Localmente
 
 ```bash
 pnpm install
@@ -28,7 +26,7 @@ pnpm dev
 
 Abra `http://localhost:3000`.
 
-## Validação
+## Validacao
 
 ```bash
 pnpm lint
@@ -36,32 +34,46 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm test:e2e
-pnpm validate
+pnpm db:migrate
+pnpm db:types
 ```
 
-## Variáveis
+## Variaveis
 
-Copie `.env.example` para `.env.local` e preencha apenas o que for usar. Com `DEMO_MODE=true`, o app funciona sem credenciais reais.
+Com `DEMO_MODE=true`, o app funciona sem credenciais reais.
 
-## Onde alterar
+Para producao, configure conforme o canal usado:
 
-- Landing e storytelling: `components/PremiumLanding.tsx`
+- `OPENAI_API_KEY`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `WHATSAPP_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_WEBHOOK_SECRET`
+
+## Arquitetura Principal
+
+- Landing: `components/AssessorLanding.tsx`
 - Dashboard: `components/DashboardClient.tsx`
-- Componentes visuais: `components/PremiumVisuals.tsx`
-- Modelo de experiência: `lib/product-experience.ts`
-- Preços e perguntas: `lib/questions.ts`
-- Scoring: `lib/scoring.ts`
-- Prompt/IA: `lib/ai-report.ts`
-- Pagamentos: `lib/payments.ts` e `app/api/payments/webhook/route.ts`
-- Analytics: `lib/events.ts`
-- Banco: `supabase/migrations/001_initial_schema.sql` e `supabase/migrations/002_product_evolution_schema.sql`
-- Admin: `components/AdminPanel.tsx`
+- Visuais: `components/AssessorVisuals.tsx`
+- Nucleo do produto: `lib/assistant-core.ts`
+- Onboarding: `components/OnboardingClient.tsx`
+- Checkout: `app/checkout/page.tsx` e `app/api/checkout/route.ts`
+- Pagamentos/webhook: `lib/payments.ts` e `app/api/payments/webhook/route.ts`
+- APIs do assessor: `app/api/assistant/organize/route.ts`, `app/api/integrations/google-calendar/route.ts`, `app/api/integrations/whatsapp/route.ts`, `app/api/notifications/push/route.ts`
+- Banco: `supabase/migrations/003_proactive_assessor_schema.sql`
 
-## Documentação do redesign
+## Documentacao
 
+- `docs/proactive-assessor-redesign.md`
 - `docs/redesign-audit.md`
-- `docs/extraordinary-redesign.md`
 
-## Aviso importante
+## Limites De Seguranca
 
-O Virada IA oferece uma análise educacional baseada nas informações fornecidas pelo usuário. Não realiza diagnóstico médico ou psicológico e não substitui profissionais de saúde, psicologia, finanças, contabilidade ou outras áreas especializadas.
+O Virada IA pode organizar, preparar, sugerir e replanejar. Enviar mensagem externa, criar evento em calendario conectado, acionar WhatsApp, alterar dados sensiveis ou executar acao importante exige consentimento e confirmacao do usuario.

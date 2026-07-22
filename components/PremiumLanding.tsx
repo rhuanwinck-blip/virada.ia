@@ -28,53 +28,53 @@ const result = scoreDiagnostic(demoAnswers);
 const weeklyPlan = buildWeeklyPlan(result);
 
 const recognitionCards = [
-  "Você começa, mas abandona.",
+  "VocÃª comeÃ§a, mas abandona.",
   "Seu celular consome seu tempo.",
-  "Você não sabe qual meta priorizar.",
-  "Seu dinheiro não segue um plano.",
+  "VocÃª nÃ£o sabe qual meta priorizar.",
+  "Seu dinheiro nÃ£o segue um plano.",
   "Sua rotina muda todos os dias.",
-  "Você planeja mais do que executa.",
-  "Você perde um dia e abandona a semana.",
-  "Você sente que poderia estar muito melhor."
+  "VocÃª planeja mais do que executa.",
+  "VocÃª perde um dia e abandona a semana.",
+  "VocÃª sente que poderia estar muito melhor."
 ];
 
 const productScreens = [
-  ["Visão geral", "Índice, missão, prioridade, tendência e insight da IA."],
-  ["Hoje", "Missão focada, versão mínima, checklist e conclusão."],
-  ["Diagnóstico", "Mapa do momento, evidências, contradições e confiança."],
+  ["VisÃ£o geral", "Ãndice, missÃ£o, prioridade, tendÃªncia e insight da IA."],
+  ["Hoje", "MissÃ£o focada, versÃ£o mÃ­nima, checklist e conclusÃ£o."],
+  ["DiagnÃ³stico", "Mapa do momento, evidÃªncias, contradiÃ§Ãµes e confianÃ§a."],
   ["Meu Plano", "Quatro semanas, marcos, bloqueios e replanejamento."],
-  ["Hábitos", "Calendário, sequência, dificuldade e notas."],
-  ["Foco", "Sessão rápida, intenção, interrupções e reflexão."],
-  ["Evolução", "Linha do tempo, radar comparativo, heatmap e relatório mensal."],
-  ["Assistente IA", "Explicações, adaptação, retomada e próxima ação."],
-  ["Relatórios", "Inicial, semanal, mensal, PDF e limitações claras."]
+  ["HÃ¡bitos", "CalendÃ¡rio, sequÃªncia, dificuldade e notas."],
+  ["Foco", "SessÃ£o rÃ¡pida, intenÃ§Ã£o, interrupÃ§Ãµes e reflexÃ£o."],
+  ["EvoluÃ§Ã£o", "Linha do tempo, radar comparativo, heatmap e relatÃ³rio mensal."],
+  ["Assistente IA", "ExplicaÃ§Ãµes, adaptaÃ§Ã£o, retomada e prÃ³xima aÃ§Ã£o."],
+  ["RelatÃ³rios", "Inicial, semanal, mensal, PDF e limitaÃ§Ãµes claras."]
 ];
 
 const stickySteps = [
   {
-    title: "Mapeamos seus padrões.",
-    body: "As respostas deixam de ser texto solto e viram sinais: clareza, execução, tempo, rotina, dinheiro e energia.",
-    visual: "Respostas → sinais"
+    title: "Mapeamos seus padrÃµes.",
+    body: "As respostas deixam de ser texto solto e viram sinais: clareza, execuÃ§Ã£o, tempo, rotina, dinheiro e energia.",
+    visual: "Respostas â†’ sinais"
   },
   {
     title: "Identificamos o bloqueio principal.",
-    body: "O sistema cruza pontuações, evidências e contradições para encontrar a alavanca mais realista.",
+    body: "O sistema cruza pontuaÃ§Ãµes, evidÃªncias e contradiÃ§Ãµes para encontrar a alavanca mais realista.",
     visual: "Bloqueio destacado"
   },
   {
     title: "Criamos uma prioridade.",
-    body: "Metas demais são reduzidas para uma direção de 30 dias, com critério de conclusão.",
-    visual: "Várias metas → uma prioridade"
+    body: "Metas demais sÃ£o reduzidas para uma direÃ§Ã£o de 30 dias, com critÃ©rio de conclusÃ£o.",
+    visual: "VÃ¡rias metas â†’ uma prioridade"
   },
   {
-    title: "Transformamos em ações.",
-    body: "O plano vira missões curtas, versões mínimas e checkpoints para manter continuidade.",
-    visual: "Calendário vivo"
+    title: "Transformamos em aÃ§Ãµes.",
+    body: "O plano vira missÃµes curtas, versÃµes mÃ­nimas e checkpoints para manter continuidade.",
+    visual: "CalendÃ¡rio vivo"
   },
   {
     title: "Adaptamos quando a vida muda.",
-    body: "Falhar um dia não reinicia o processo. O plano reduz, reorganiza e registra a retomada.",
-    visual: "Antes → depois"
+    body: "Falhar um dia nÃ£o reinicia o processo. O plano reduz, reorganiza e registra a retomada.",
+    visual: "Antes â†’ depois"
   }
 ];
 
@@ -102,14 +102,14 @@ export function PremiumLanding() {
           <Link className="brand" href="/">
             <span className="brand-mark">V</span> Virada IA
           </Link>
-          <nav className="nav" aria-label="Navegação principal">
-            <a href="#metodo">Método</a>
+          <nav className="nav" aria-label="NavegaÃ§Ã£o principal">
+            <a href="#metodo">MÃ©todo</a>
             <a href="#produto">Produto</a>
             <a href="#planos">Planos</a>
             <a href="#faq">FAQ</a>
           </nav>
           <Link className="button secondary" href="/diagnostico">
-            Começar <ArrowRight size={17} />
+            ComeÃ§ar <ArrowRight size={17} />
           </Link>
         </div>
       </header>
@@ -118,11 +118,11 @@ export function PremiumLanding() {
         <section className="container hero-immersive" onMouseMove={move}>
           <motion.div className="hero-copy" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.72 }}>
             <span className="eyebrow">
-              <Sparkles size={15} /> Sistema inteligente de direção pessoal
+              <Sparkles size={15} /> Sistema inteligente de direÃ§Ã£o pessoal
             </span>
-            <h1>Descubra o que está travando sua evolução antes de tentar mudar tudo novamente.</h1>
+            <h1>Descubra o que estÃ¡ travando sua evoluÃ§Ã£o antes de tentar mudar tudo novamente.</h1>
             <p>
-              O Virada IA analisa seus hábitos, sua rotina, suas prioridades e seus padrões para criar uma direção clara e
+              O Virada IA analisa seus hÃ¡bitos, sua rotina, suas prioridades e seus padrÃµes para criar uma direÃ§Ã£o clara e
               um plano personalizado de 30 dias.
             </p>
             <div className="hero-actions">
@@ -130,11 +130,11 @@ export function PremiumLanding() {
                 Descobrir meu ponto de virada <ArrowRight size={18} />
               </Link>
               <a className="button secondary" href="#demo">
-                Ver uma análise de exemplo
+                Ver uma anÃ¡lise de exemplo
               </a>
             </div>
             <div className="microcopy">
-              {["Análise inicial gratuita", "Resultado personalizado", "Sem cartão"].map((item) => (
+              {["AnÃ¡lise inicial gratuita", "Resultado personalizado", "Sem cartÃ£o"].map((item) => (
                 <span key={item}>
                   <CheckCircle2 size={15} /> {item}
                 </span>
@@ -149,18 +149,18 @@ export function PremiumLanding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.72, delay: 0.1 }}
           >
-            <ScannerPanel className="signal-board" label="Núcleo de diagnóstico">
+            <ScannerPanel className="signal-board" label="NÃºcleo de diagnÃ³stico">
               <div className="score-row">
                 <ProgressCore score={result.viradaIndex} confidence={result.confidence} trend="+6" />
                 <PillarRadar scores={result.pillarScores} compact />
               </div>
               <div className="metric-grid">
-                <FloatingMetric label="Bloqueio principal" value="Direção" detail="Muitas frentes abertas, pouca prioridade." tone="green" />
-                <FloatingMetric label="Confiança" value={`${result.confidenceScore}%`} detail="Contradições reduzem certeza." tone="blue" delay={0.05} />
-                <FloatingMetric label="Missão de hoje" value="15 min" detail="Escolher uma única meta." tone="gold" delay={0.1} />
-                <FloatingMetric label="Próximo check-in" value="7 dias" detail="Ajustar sem apagar histórico." tone="violet" delay={0.15} />
+                <FloatingMetric label="Bloqueio principal" value="DireÃ§Ã£o" detail="Muitas frentes abertas, pouca prioridade." tone="green" />
+                <FloatingMetric label="ConfianÃ§a" value={`${result.confidenceScore}%`} detail="ContradiÃ§Ãµes reduzem certeza." tone="blue" delay={0.05} />
+                <FloatingMetric label="MissÃ£o de hoje" value="15 min" detail="Escolher uma Ãºnica meta." tone="gold" delay={0.1} />
+                <FloatingMetric label="PrÃ³ximo check-in" value="7 dias" detail="Ajustar sem apagar histÃ³rico." tone="violet" delay={0.15} />
               </div>
-              <DataFlow stages={["Respostas", "Pontuação", "Padrões", "Prioridade", "Plano", "Acompanhamento"]} />
+              <DataFlow stages={["Respostas", "PontuaÃ§Ã£o", "PadrÃµes", "Prioridade", "Plano", "Acompanhamento"]} />
             </ScannerPanel>
           </motion.div>
         </section>
@@ -169,10 +169,10 @@ export function PremiumLanding() {
           <div className="container">
             <div className="section-header center">
               <span className="eyebrow">Reconhecimento sem culpa</span>
-              <h2>Talvez você não esteja parado por falta de vontade.</h2>
+              <h2>Talvez vocÃª nÃ£o esteja parado por falta de vontade.</h2>
               <p>
-                Você pode estar tentando corrigir muitas áreas ao mesmo tempo, seguindo planos que não consideram sua
-                rotina e começando sempre pela ação errada.
+                VocÃª pode estar tentando corrigir muitas Ã¡reas ao mesmo tempo, seguindo planos que nÃ£o consideram sua
+                rotina e comeÃ§ando sempre pela aÃ§Ã£o errada.
               </p>
             </div>
             <div className="cards-grid">
@@ -196,14 +196,14 @@ export function PremiumLanding() {
         <section className="section" id="metodo">
           <div className="container">
             <div className="section-header">
-              <span className="eyebrow">Quebra de padrão</span>
-              <h2>Mais uma lista de tarefas não resolverá.</h2>
+              <span className="eyebrow">Quebra de padrÃ£o</span>
+              <h2>Mais uma lista de tarefas nÃ£o resolverÃ¡.</h2>
             </div>
             <div className="comparison-grid">
-              <ScannerPanel label="Método genérico">
-                <h3 style={{ marginTop: 14, fontSize: "1.7rem" }}>Rotina pronta, metas excessivas e cobrança.</h3>
+              <ScannerPanel label="MÃ©todo genÃ©rico">
+                <h3 style={{ marginTop: 14, fontSize: "1.7rem" }}>Rotina pronta, metas excessivas e cobranÃ§a.</h3>
                 <ul className="check-list" style={{ marginTop: 18 }}>
-                  {["Começa pela agenda", "Aumenta a pressão", "Ignora o dia real", "Transforma falha em abandono"].map((item) => (
+                  {["ComeÃ§a pela agenda", "Aumenta a pressÃ£o", "Ignora o dia real", "Transforma falha em abandono"].map((item) => (
                     <li key={item}>
                       <LockKeyhole size={16} color="#ff6470" /> {item}
                     </li>
@@ -211,11 +211,11 @@ export function PremiumLanding() {
                 </ul>
               </ScannerPanel>
               <ScannerPanel label="Virada IA">
-                <h3 style={{ marginTop: 14, fontSize: "1.7rem" }}>Diagnóstico, prioridade, ação mínima e adaptação.</h3>
+                <h3 style={{ marginTop: 14, fontSize: "1.7rem" }}>DiagnÃ³stico, prioridade, aÃ§Ã£o mÃ­nima e adaptaÃ§Ã£o.</h3>
                 <ul className="check-list" style={{ marginTop: 18 }}>
-                  {["Começa pelo padrão", "Reduz fricção", "Explica a recomendação", "Planeja a retomada"].map((item) => (
+                  {["ComeÃ§a pelo padrÃ£o", "Reduz fricÃ§Ã£o", "Explica a recomendaÃ§Ã£o", "Planeja a retomada"].map((item) => (
                     <li key={item}>
-                      <BadgeCheck size={16} color="#5cffb0" /> {item}
+                      <BadgeCheck size={16} color="#58c7ff" /> {item}
                     </li>
                   ))}
                 </ul>
@@ -229,10 +229,10 @@ export function PremiumLanding() {
             <div className="sticky-copy">
               <span className="eyebrow">Storytelling do produto</span>
               <h2 style={{ marginTop: 18, fontSize: "clamp(2rem, 4vw, 3.7rem)" }}>
-                O scroll mostra a transformação de resposta em direção.
+                O scroll mostra a transformaÃ§Ã£o de resposta em direÃ§Ã£o.
               </h2>
               <p className="premium-copy">
-                O produto não empilha cards: ele revela como uma vida confusa vira mapa, prioridade, plano e acompanhamento.
+                O produto nÃ£o empilha cards: ele revela como uma vida confusa vira mapa, prioridade, plano e acompanhamento.
               </p>
               <AICompanionPreview result={result} />
             </div>
@@ -255,7 +255,7 @@ export function PremiumLanding() {
               <span className="eyebrow">
                 <Radar size={15} /> Seis pilares conectados
               </span>
-              <h2>Clareza, execução, tempo, rotina, dinheiro e energia não evoluem isolados.</h2>
+              <h2>Clareza, execuÃ§Ã£o, tempo, rotina, dinheiro e energia nÃ£o evoluem isolados.</h2>
             </div>
             <div className="pillar-grid">
               {Object.entries(pillars).map(([key, pillar], index) => {
@@ -288,32 +288,32 @@ export function PremiumLanding() {
               <span className="eyebrow">
                 <Workflow size={15} /> IA com contexto
               </span>
-              <h2>Inteligência artificial com contexto, não respostas genéricas.</h2>
+              <h2>InteligÃªncia artificial com contexto, nÃ£o respostas genÃ©ricas.</h2>
               <p>
-                As pontuações são calculadas por regras, a IA interpreta padrões, as recomendações usam respostas e
-                contradições reduzem a confiança. O sistema é educacional e não realiza diagnóstico médico.
+                As pontuaÃ§Ãµes sÃ£o calculadas por regras, a IA interpreta padrÃµes, as recomendaÃ§Ãµes usam respostas e
+                contradiÃ§Ãµes reduzem a confianÃ§a. O sistema Ã© educacional e nÃ£o realiza diagnÃ³stico mÃ©dico.
               </p>
             </div>
-            <DataFlow stages={["Respostas", "Pontuação", "Padrões", "Prioridade", "Plano", "Acompanhamento"]} />
+            <DataFlow stages={["Respostas", "PontuaÃ§Ã£o", "PadrÃµes", "Prioridade", "Plano", "Acompanhamento"]} />
           </div>
         </section>
 
         <section className="section" id="demo">
           <div className="container">
             <div className="section-header">
-              <span className="eyebrow">Demonstração marcada como exemplo</span>
-              <h2>Uma análise realista, explicável e sem promessa milagrosa.</h2>
+              <span className="eyebrow">DemonstraÃ§Ã£o marcada como exemplo</span>
+              <h2>Uma anÃ¡lise realista, explicÃ¡vel e sem promessa milagrosa.</h2>
             </div>
             <div className="dashboard-hero">
-              <ScannerPanel label="Exemplo fictício">
-                <ProgressCore score={43} confidence="média" trend="- ponto inicial" />
-                <h3 style={{ marginTop: 18, fontSize: "1.7rem" }}>Falta de direção combinada com excesso de distração.</h3>
+              <ScannerPanel label="Exemplo fictÃ­cio">
+                <ProgressCore score={43} confidence="mÃ©dia" trend="- ponto inicial" />
+                <h3 style={{ marginTop: 18, fontSize: "1.7rem" }}>Falta de direÃ§Ã£o combinada com excesso de distraÃ§Ã£o.</h3>
                 <p className="premium-copy">
-                  Evidências: várias metas ao mesmo tempo, cinco a sete horas de tela, abandono após falhas e ausência de
-                  planejamento diário.
+                  EvidÃªncias: vÃ¡rias metas ao mesmo tempo, cinco a sete horas de tela, abandono apÃ³s falhas e ausÃªncia de
+                  planejamento diÃ¡rio.
                 </p>
                 <div className="notice">
-                  Primeira ação: escolha uma única meta para os próximos 30 dias e reserve 15 minutos para iniciar hoje.
+                  Primeira aÃ§Ã£o: escolha uma Ãºnica meta para os prÃ³ximos 30 dias e reserve 15 minutos para iniciar hoje.
                 </div>
               </ScannerPanel>
               <ConnectedNodes items={behaviorPatterns.map((pattern) => ({ title: pattern.title, detail: pattern.action }))} />
@@ -327,7 +327,7 @@ export function PremiumLanding() {
               <span className="eyebrow">
                 <Clock3 size={15} /> Plano de 30 dias
               </span>
-              <h2>Quatro semanas com missão diária, check-in e replanejamento.</h2>
+              <h2>Quatro semanas com missÃ£o diÃ¡ria, check-in e replanejamento.</h2>
             </div>
             <div className="cards-grid">
               {weeklyPlan.map((week) => (
@@ -350,7 +350,7 @@ export function PremiumLanding() {
               <span className="eyebrow">
                 <CircleGauge size={15} /> Produto completo
               </span>
-              <h2>Dashboard de evolução, não apenas uma área de resultado.</h2>
+              <h2>Dashboard de evoluÃ§Ã£o, nÃ£o apenas uma Ã¡rea de resultado.</h2>
             </div>
             <div className="dashboard-module-grid">
               {productScreens.map(([title, body]) => (
@@ -366,8 +366,8 @@ export function PremiumLanding() {
         <section className="section alt" id="planos">
           <div className="container">
             <div className="section-header center">
-              <span className="eyebrow">Planos sem urgência falsa</span>
-              <h2>Escolha o nível de acompanhamento que combina com seu momento.</h2>
+              <span className="eyebrow">Planos sem urgÃªncia falsa</span>
+              <h2>Escolha o nÃ­vel de acompanhamento que combina com seu momento.</h2>
             </div>
             <PricingCards />
           </div>
@@ -377,23 +377,23 @@ export function PremiumLanding() {
           <div className="container">
             <div className="section-header">
               <span className="eyebrow">
-                <ShieldCheck size={15} /> Confiança
+                <ShieldCheck size={15} /> ConfianÃ§a
               </span>
-              <h2>Dados protegidos, análise explicável e limitações claras.</h2>
+              <h2>Dados protegidos, anÃ¡lise explicÃ¡vel e limitaÃ§Ãµes claras.</h2>
             </div>
             <div className="cards-grid">
               {[
-                [Fingerprint, "Sem venda de dados", "Analytics não recebe e-mail, telefone ou respostas completas."],
-                [ShieldCheck, "Pagamento seguro", "Acesso completo depende de webhook válido ou consulta segura."],
-                [GitBranch, "Plano adaptável", "Replanejamento cria nova versão, sem apagar histórico."],
-                [LockKeyhole, "Cancelamento simples", "Assinatura e status aparecem na área da conta."],
-                [Compass, "Recomendação explicável", "Cada sugestão mostra motivo, evidência, impacto e dificuldade."],
-                [Sparkles, "IA com limites", "Sem diagnóstico médico, prescrição ou conselho financeiro específico."]
+                [Fingerprint, "Sem venda de dados", "Analytics nÃ£o recebe e-mail, telefone ou respostas completas."],
+                [ShieldCheck, "Pagamento seguro", "Acesso completo depende de webhook vÃ¡lido ou consulta segura."],
+                [GitBranch, "Plano adaptÃ¡vel", "Replanejamento cria nova versÃ£o, sem apagar histÃ³rico."],
+                [LockKeyhole, "Cancelamento simples", "Assinatura e status aparecem na Ã¡rea da conta."],
+                [Compass, "RecomendaÃ§Ã£o explicÃ¡vel", "Cada sugestÃ£o mostra motivo, evidÃªncia, impacto e dificuldade."],
+                [Sparkles, "IA com limites", "Sem diagnÃ³stico mÃ©dico, prescriÃ§Ã£o ou conselho financeiro especÃ­fico."]
               ].map(([Icon, title, body]) => {
                 const TypedIcon = Icon as typeof ShieldCheck;
                 return (
                   <article className="info-card" key={String(title)}>
-                    <TypedIcon color="#5cffb0" size={24} />
+                    <TypedIcon color="#58c7ff" size={24} />
                     <h3 style={{ marginTop: 12 }}>{String(title)}</h3>
                     <p>{String(body)}</p>
                   </article>
@@ -426,11 +426,11 @@ export function PremiumLanding() {
         <section className="section">
           <div className="container">
             <div className="section-header center">
-              <span className="eyebrow">Primeiro passo possível</span>
-              <h2>Você já tentou mudar muitas vezes. Agora descubra por onde deveria ter começado.</h2>
-              <p>Menos culpa. Mais clareza. Um plano compatível com sua realidade.</p>
+              <span className="eyebrow">Primeiro passo possÃ­vel</span>
+              <h2>VocÃª jÃ¡ tentou mudar muitas vezes. Agora descubra por onde deveria ter comeÃ§ado.</h2>
+              <p>Menos culpa. Mais clareza. Um plano compatÃ­vel com sua realidade.</p>
               <Link className="button" href="/diagnostico">
-                Fazer minha análise gratuita <ArrowRight size={18} />
+                Fazer minha anÃ¡lise gratuita <ArrowRight size={18} />
               </Link>
             </div>
           </div>
@@ -439,9 +439,9 @@ export function PremiumLanding() {
 
       <footer className="footer">
         <div className="container" style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-          <span>© 2026 Virada IA</span>
+          <span>Â© 2026 Virada IA</span>
           <span>
-            <a href="/legal/privacidade">Privacidade</a> · <a href="/legal/termos">Termos</a> ·{" "}
+            <a href="/legal/privacidade">Privacidade</a> Â· <a href="/legal/termos">Termos</a> Â·{" "}
             <a href="/legal/cookies">Cookies</a>
           </span>
         </div>

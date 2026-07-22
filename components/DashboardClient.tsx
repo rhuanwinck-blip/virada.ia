@@ -1,94 +1,142 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CalendarDays,
   Check,
   ChevronRight,
-  CircleGauge,
+  Clock3,
   Command,
   CreditCard,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
+  FolderKanban,
+  Inbox,
+  ListTodo,
+  Mail,
+  MemoryStick,
   MessageSquareText,
+  Mic,
+  Moon,
+  Pause,
   Play,
-  RotateCcw,
-  Search,
-  Target,
+  RefreshCcw,
+  Settings,
   Timer,
-  Trophy,
-  UserRound
+  Trash2,
+  UserRound,
+  Workflow,
+  Zap
 } from "lucide-react";
 import {
-  AICompanionPreview,
-  CommandPalette,
-  ConnectedNodes,
-  FloatingMetric,
-  HabitHeatmap,
-  PillarRadar,
-  PlanTimeline,
-  ProgressCore,
-  ScannerPanel,
+  ActivationOverlay,
+  AssessorCommandPalette,
+  AssessorCore,
+  AudioWave,
+  DraftActionCard,
+  HolographicPanel,
+  MetricTile,
   StatusPill,
-  UnlockExperience
-} from "@/components/PremiumVisuals";
-import { demoAnswers } from "@/lib/questions";
-import { loadAnswers, loadProgress, toggleProgress } from "@/lib/local-store";
-import { scoreDiagnostic } from "@/lib/scoring";
+  TimelineMap
+} from "@/components/AssessorVisuals";
 import {
-  achievements,
-  behaviorPatterns,
-  buildEvolutionSeries,
-  buildWeeklyPlan,
-  dashboardEmptyStates,
-  dashboardNavigation,
-  financeEntries,
-  getPillarTrend,
-  goals,
-  libraryItems,
-  priorityMap,
-  routineBlocks,
-  smartRecommendations
-} from "@/lib/product-experience";
+  AssistantDraftAction,
+  AssistantEvent,
+  AssistantFollowUp,
+  AssistantMemory,
+  AssistantNavigationItem,
+  AssistantProject,
+  AssistantRoutine,
+  AssistantSectionId,
+  AssistantTask,
+  assistantNavigation,
+  buildDayOrganizationScore,
+  buildMorningBriefing,
+  buildNightReview,
+  demoEvents,
+  demoFollowUps,
+  demoInbox,
+  demoMemories,
+  demoNotifications,
+  demoProjects,
+  demoRoutines,
+  demoTasks,
+  findFreeWindows,
+  findScheduleConflicts,
+  integrations,
+  parseAssistantIntent,
+  replanOverdueItems
+} from "@/lib/assistant-core";
 
-const navIcons = {
-  overview: LayoutDashboard,
-  today: Timer,
-  plan: CalendarDays,
-  assistant: MessageSquareText,
-  evolution: CircleGauge
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
 };
+
+type InboxItem = {
+  id: string;
+  text: string;
+  type: string;
+  status: string;
+};
+
+const navIcons: Record<AssistantSectionId, typeof Command> = {
+  central: Command,
+  today: Clock3,
+  assistant: MessageSquareText,
+  calendar: CalendarDays,
+  tasks: ListTodo,
+  projects: FolderKanban,
+  routines: Workflow,
+  inbox: Inbox,
+  focus: Timer,
+  followups: Mail,
+  memory: MemoryStick,
+  notifications: Bell,
+  integrations: Zap,
+  subscription: CreditCard,
+  settings: Settings
+};
+
+const navGroups = ["Comando", "Organizacao", "Acompanhamento", "Sistema"] as const;
 
 export function DashboardClient() {
   const searchParams = useSearchParams();
-  const [done, setDone] = useState<number[]>([]);
-  const [active, setActive] = useState("overview");
+  const [active, setActive] = useState<AssistantSectionId>("central");
   const [commandOpen, setCommandOpen] = useState(false);
-  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [activationOpen, setActivationOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [draft, setDraft] = useState<AssistantDraftAction | undefined>();
+  const [audioActive, setAudioActive] = useState(false);
   const [focusRunning, setFocusRunning] = useState(false);
-  const [focusMinutes, setFocusMinutes] = useState(0);
-  const [reflection, setReflection] = useState("");
+  const [focusSeconds, setFocusSeconds] = useState(0);
+  const [currentTime, setCurrentTime] = useState(() => formatClock(new Date()));
+  const [events, setEvents] = useState<AssistantEvent[]>(demoEvents);
+  const [tasks, setTasks] = useState<AssistantTask[]>(demoTasks);
+  const [projects, setProjects] = useState<AssistantProject[]>(demoProjects);
+  const [routines, setRoutines] = useState<AssistantRoutine[]>(demoRoutines);
+  const [followUps, setFollowUps] = useState<AssistantFollowUp[]>(demoFollowUps);
+  const [memories, setMemories] = useState<AssistantMemory[]>(demoMemories);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>(demoInbox);
+  const [chat, setChat] = useState<ChatMessage[]>([
+    {
+      id: "msg-welcome",
+      role: "assistant",
+      text: "Pode escrever ou gravar tudo que precisa fazer. Eu classifico, organizo e peço confirmação antes de criar algo importante."
+    }
+  ]);
 
-  const result = useMemo(
-    () => scoreDiagnostic(typeof window === "undefined" ? demoAnswers : loadAnswers() ?? demoAnswers),
-    []
-  );
-  const todayMission = result.thirtyDayPlan.find((mission) => !done.includes(mission.day)) ?? result.thirtyDayPlan[0];
-  const weeklyPlan = buildWeeklyPlan(result);
-  const evolution = buildEvolutionSeries(result, done);
-  const activeItem = dashboardNavigation.find((item) => item.id === active) ?? dashboardNavigation[0];
-  const completedRate = Math.round((done.length / result.thirtyDayPlan.length) * 100);
+  const activeItem = assistantNavigation.find((item) => item.id === active) ?? assistantNavigation[0];
+  const organizationScore = useMemo(() => buildDayOrganizationScore(tasks, events), [tasks, events]);
+  const freeWindows = useMemo(() => findFreeWindows(events), [events]);
+  const conflicts = useMemo(() => findScheduleConflicts(events), [events]);
+  const briefing = useMemo(() => buildMorningBriefing(tasks, events), [tasks, events]);
+  const replanSuggestions = useMemo(() => replanOverdueItems(tasks), [tasks]);
 
   useEffect(() => {
-    setDone(loadProgress());
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get("payment") === "approved") setUnlockOpen(true);
+    if (searchParams.get("payment") === "approved") setActivationOpen(true);
   }, [searchParams]);
 
   useEffect(() => {
@@ -99,46 +147,164 @@ export function DashboardClient() {
         setCommandOpen(true);
       }
     }
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(formatClock(new Date())), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!focusRunning) return;
-    const timer = window.setInterval(() => setFocusMinutes((value) => value + 1), 60000);
+    const timer = window.setInterval(() => setFocusSeconds((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [focusRunning]);
 
-  function completeMission(day = todayMission.day) {
-    setDone(toggleProgress(day));
+  function submitCommand(text = input) {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const nextDraft = parseAssistantIntent(trimmed);
+    setDraft(nextDraft);
+    setChat((messages) => [
+      ...messages,
+      { id: `user-${Date.now()}`, role: "user", text: trimmed },
+      {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text: `${nextDraft.summary}. ${nextDraft.followUpQuestion ?? "Posso confirmar quando voce aprovar."}`
+      }
+    ]);
+    setInput("");
+  }
+
+  function simulateAudio() {
+    setAudioActive(true);
+    window.setTimeout(() => {
+      setAudioActive(false);
+      submitCommand("Amanha as 14h tenho dentista");
+    }, 900);
+  }
+
+  function confirmDraft() {
+    if (!draft) return;
+    if (draft.type === "event") {
+      setEvents((items) => [
+        ...items,
+        {
+          id: draft.id,
+          title: draft.title,
+          date: draft.dateLabel,
+          start: draft.timeLabel ?? "A definir",
+          end: draft.timeLabel ? addMinutes(draft.timeLabel, draft.durationMinutes ?? 30) : "A definir",
+          participants: [],
+          source: "assistant"
+        }
+      ]);
+    } else if (draft.type === "task" || draft.type === "reminder") {
+      setTasks((items) => [
+        ...items,
+        {
+          id: draft.id,
+          title: draft.title,
+          priority: draft.priority,
+          due: draft.dateLabel,
+          time: draft.timeLabel,
+          durationMinutes: draft.durationMinutes ?? 15,
+          status: "pendente",
+          subtasks: ["Confirmar contexto", "Executar primeiro passo"],
+          reminders: draft.timeLabel ? [`${draft.dateLabel} ${draft.timeLabel}`, "Acompanhar depois se nao concluir"] : ["Pedir horario"]
+        }
+      ]);
+    } else if (draft.type === "routine") {
+      setRoutines((items) => [
+        ...items,
+        {
+          id: draft.id,
+          title: draft.title,
+          schedule: `${draft.dateLabel}${draft.timeLabel ? ` as ${draft.timeLabel}` : ""}`,
+          durationMinutes: draft.durationMinutes ?? 10,
+          channel: "painel",
+          status: "ativa",
+          reducedVersion: "Executar versao minima em dia cheio"
+        }
+      ]);
+    } else if (draft.type === "project") {
+      setProjects((items) => [
+        ...items,
+        {
+          id: draft.id,
+          title: draft.title,
+          goal: draft.sourceText,
+          deadline: draft.dateLabel,
+          progress: 12,
+          nextSteps: ["Quebrar em tarefas menores", "Definir primeiro bloco", "Marcar prazo de revisao"],
+          risks: draft.missing.length ? ["Ainda faltam detalhes antes de automatizar"] : ["Prazo precisa ser protegido"],
+          owner: "Voce"
+        }
+      ]);
+    } else if (draft.type === "follow_up") {
+      setFollowUps((items) => [
+        ...items,
+        {
+          id: draft.id,
+          title: draft.title,
+          waitingFor: "Terceiro a confirmar",
+          checkAt: `${draft.dateLabel}${draft.timeLabel ? ` ${draft.timeLabel}` : ""}`,
+          nextAction: "Preparar cobranca, mas pedir confirmacao antes de enviar.",
+          channel: "painel"
+        }
+      ]);
+    } else {
+      setInboxItems((items) => [{ id: draft.id, text: draft.sourceText, type: "nota", status: "classificado" }, ...items]);
+    }
+
+    setChat((messages) => [
+      ...messages,
+      { id: `ok-${Date.now()}`, role: "assistant", text: `Confirmado. ${draft.title} entrou na area correta e continuara visivel para replanejamento.` }
+    ]);
+    setDraft(undefined);
+  }
+
+  function toggleTask(taskId: string) {
+    setTasks((items) =>
+      items.map((task) =>
+        task.id === taskId ? { ...task, status: task.status === "concluida" ? "pendente" : "concluida" } : task
+      )
+    );
+  }
+
+  function removeMemory(memoryId: string) {
+    setMemories((items) => items.filter((memory) => memory.id !== memoryId));
   }
 
   return (
-    <main className="dashboard-shell">
-      <aside className="app-sidebar" aria-label="Navegação do produto">
+    <main className="dashboard-shell command-theme">
+      <div className="command-grid" />
+      <aside className="app-sidebar" aria-label="Navegacao do assessor">
         <div className="sidebar-header">
           <Link className="brand" href="/">
             <span className="brand-mark">V</span> Virada IA
           </Link>
-          <span className="plan-badge">Pro demo</span>
+          <span className="plan-badge">Assessor demo</span>
         </div>
-        {["Agora", "Entender", "Evoluir", "Inteligencia", "Conta"].map((group) => (
+        {navGroups.map((group) => (
           <div className="sidebar-group" key={group}>
-            <h3>{group === "Inteligencia" ? "Inteligência" : group}</h3>
-            {dashboardNavigation
+            <h3>{group}</h3>
+            {assistantNavigation
               .filter((item) => item.group === group)
-              .map((item) => (
-                <button
-                  className={`sidebar-item ${active === item.id ? "active" : ""}`}
-                  key={item.id}
-                  onClick={() => setActive(item.id)}
-                  type="button"
-                >
-                  <span>{item.label}</span>
-                  {active === item.id ? <ChevronRight size={15} /> : null}
-                </button>
-              ))}
+              .map((item) => {
+                const Icon = navIcons[item.id];
+                return (
+                  <button className={`sidebar-item ${active === item.id ? "active" : ""}`} key={item.id} onClick={() => setActive(item.id)} type="button">
+                    <span>
+                      <Icon size={16} /> {item.label}
+                    </span>
+                    {active === item.id ? <ChevronRight size={15} /> : null}
+                  </button>
+                );
+              })}
           </div>
         ))}
       </aside>
@@ -147,18 +313,15 @@ export function DashboardClient() {
         <header className="dashboard-topbar">
           <div>
             <strong>{activeItem.label}</strong>
-            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: ".86rem" }}>{activeItem.description}</p>
+            <p>{activeItem.description}</p>
           </div>
           <div className="topbar-actions">
             <button className="command-trigger" type="button" onClick={() => setCommandOpen(true)}>
               <Command size={16} />
-              <span>Buscar ação</span>
+              <span>Buscar acao</span>
               <kbd>Ctrl K</kbd>
             </button>
-            <button className="icon-button" type="button" aria-label="Buscar">
-              <Search size={18} />
-            </button>
-            <button className="icon-button" type="button" aria-label="Notificações">
+            <button className="icon-button" type="button" aria-label="Notificacoes">
               <Bell size={18} />
             </button>
             <button className="icon-button" type="button" aria-label="Perfil">
@@ -167,13 +330,13 @@ export function DashboardClient() {
           </div>
         </header>
 
-        {renderSection()}
+        {renderSection(activeItem)}
       </section>
 
-      <nav className="bottom-nav" aria-label="Navegação mobile">
-        {["overview", "today", "plan", "assistant", "evolution"].map((id) => {
-          const item = dashboardNavigation.find((nav) => nav.id === id)!;
-          const Icon = navIcons[id as keyof typeof navIcons];
+      <nav className="bottom-nav" aria-label="Navegacao mobile">
+        {(["central", "today", "assistant", "calendar", "tasks"] as AssistantSectionId[]).map((id) => {
+          const item = assistantNavigation.find((nav) => nav.id === id)!;
+          const Icon = navIcons[id];
           return (
             <button className={active === id ? "active" : ""} key={id} onClick={() => setActive(id)} type="button">
               <Icon size={18} />
@@ -183,522 +346,536 @@ export function DashboardClient() {
         })}
       </nav>
 
-      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onSelect={setActive} />
-      <UnlockExperience open={unlockOpen} onClose={() => setUnlockOpen(false)} />
+      <AssessorCommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onSelect={setActive} />
+      <ActivationOverlay open={activationOpen} onClose={() => setActivationOpen(false)} />
     </main>
   );
 
-  function renderSection() {
-    switch (active) {
-      case "overview":
+  function renderSection(item: AssistantNavigationItem) {
+    switch (item.id) {
+      case "central":
         return (
           <div className="dashboard-section">
             <div className="dashboard-hero">
-              <ScannerPanel className="dashboard-card" label="Visão geral">
-                <span className="eyebrow">Boa noite, Rhuan</span>
-                <h1>Seu foco continua sendo recuperar o controle da sua rotina.</h1>
+              <HolographicPanel className="dashboard-card" label="Central de comando">
+                <span className="eyebrow">Agora sao {currentTime}</span>
+                <h1>Fale o que precisa fazer. Eu organizo o resto.</h1>
                 <p className="premium-copy">
-                  O sistema prioriza {result.mainBlocker.name.toLowerCase()} porque essa área ainda segura as demais.
+                  Seu dia esta {organizationScore}% organizado. Eu vejo agenda, tarefas, lembretes, follow-ups e memoria
+                  antes de sugerir qualquer mudanca.
                 </p>
+                <CommandComposer />
+                <DraftActionCard draft={draft} onConfirm={confirmDraft} onDiscard={() => setDraft(undefined)} />
+              </HolographicPanel>
+              <HolographicPanel label="Pulso do dia">
+                <AssessorCore score={organizationScore} />
                 <div className="metric-grid">
-                  <FloatingMetric label="Concluídas" value={`${done.length}/30`} detail="Missões registradas" />
-                  <FloatingMetric label="Continuidade" value={`${completedRate}%`} detail="O plano valoriza retomada" tone="blue" />
+                  <MetricTile label="Compromissos" value={`${events.length}`} detail="Agenda de hoje" />
+                  <MetricTile label="Pendentes" value={`${tasks.filter((task) => task.status !== "concluida").length}`} detail="Tarefas abertas" tone="blue" />
                 </div>
-              </ScannerPanel>
-              <ScannerPanel className="mission-card" label="Missão de hoje">
-                <StatusPill>Prioridade atual</StatusPill>
-                <h2>{todayMission.title}</h2>
-                <p className="premium-copy">{todayMission.instruction}</p>
-                <div className="mission-actions">
-                  <button className="button" type="button" onClick={() => setActive("today")}>
-                    Iniciar missão <Play size={17} />
-                  </button>
-                  <button className="button secondary" type="button" onClick={() => completeMission()}>
-                    Concluir <Check size={17} />
-                  </button>
-                </div>
-              </ScannerPanel>
+              </HolographicPanel>
             </div>
-
             <div className="dashboard-module-grid">
-              <ScannerPanel label="Núcleo de progresso">
-                <ProgressCore score={result.viradaIndex + Math.min(8, done.length)} confidence={result.confidence} />
-              </ScannerPanel>
-              <ScannerPanel label="Mapa dos pilares">
-                <PillarRadar scores={result.pillarScores} compact />
-              </ScannerPanel>
-              <AICompanionPreview result={result} />
-            </div>
-
-            <div className="dashboard-module-grid">
-              {[
-                ["Hoje", todayMission.title],
-                ["Amanhã", result.thirtyDayPlan[todayMission.day]?.title ?? result.thirtyDayPlan[1].title],
-                ["Próximo check-in", "Revisar peso do plano e ajustar a semana"]
-              ].map(([label, value]) => (
-                <article className="info-card" key={label}>
-                  <span className="step-num">{label}</span>
-                  <h3 style={{ marginTop: 12 }}>{value}</h3>
-                </article>
-              ))}
+              <HolographicPanel label="Chat central">
+                <ChatPanel />
+              </HolographicPanel>
+              <HolographicPanel label="Inbox classificada">
+                <InboxList />
+              </HolographicPanel>
+              <HolographicPanel label="Proatividade">
+                <RecommendationList />
+              </HolographicPanel>
             </div>
           </div>
         );
       case "today":
         return (
           <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label="Missão focada">
-              <div className="module-title">
-                <div>
-                  <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>{todayMission.title}</h1>
-                  <p>{todayMission.minutes} minutos · Pilar {todayMission.pillar}</p>
-                </div>
-                <StatusPill tone={focusRunning ? "green" : "gold"}>{focusRunning ? "Foco ativo" : "Pronto"}</StatusPill>
-              </div>
-              <p className="premium-copy">{todayMission.instruction}</p>
-              <div className="dashboard-module-grid">
-                <article className="info-card">
-                  <h3>Versão mínima</h3>
-                  <p>Se o dia estiver difícil, faça apenas 10 minutos e registre a retomada.</p>
-                </article>
-                <article className="info-card">
-                  <h3>Critério de conclusão</h3>
-                  <p>Você conclui quando a ação foi iniciada e a próxima decisão ficou clara.</p>
-                </article>
-                <article className="info-card">
-                  <h3>Motivo</h3>
-                  <p>Essa ação reduz fricção antes de exigir uma rotina maior.</p>
-                </article>
-              </div>
-              <div className="mission-actions" style={{ marginTop: 18 }}>
-                <button className="button" type="button" onClick={() => setFocusRunning((value) => !value)}>
-                  {focusRunning ? "Pausar foco" : "Iniciar modo foco"} <Timer size={17} />
-                </button>
-                <button className="button secondary" type="button" onClick={() => completeMission()}>
-                  Concluir missão <Check size={17} />
-                </button>
-                <button className="button ghost" type="button" onClick={() => setActive("replan")}>
-                  Adaptar <RotateCcw size={17} />
-                </button>
-              </div>
-            </ScannerPanel>
-            <div className="dashboard-grid">
-              <section className="panel dashboard-card">
+            <div className="dashboard-hero">
+              <HolographicPanel className="dashboard-card" label="Meu Dia">
                 <div className="module-title">
                   <div>
-                    <h2>Reflexão curta</h2>
-                    <p>Opcional e não clínico. Serve para adaptar o plano.</p>
+                    <span className="eyebrow">
+                      <Clock3 size={15} /> {currentTime}
+                    </span>
+                    <h1>Seu dia esta {organizationScore}% organizado.</h1>
+                    <p className="premium-copy">
+                      {freeWindows[0]
+                        ? `Voce tem ${freeWindows[0].minutes} minutos livres entre dois compromissos. Posso colocar a tarefa do orcamento nesse horario.`
+                        : "Nao encontrei janela livre longa. Posso reduzir uma tarefa para versao rapida."}
+                    </p>
                   </div>
-                  <StatusPill tone="blue">{focusMinutes} min focados</StatusPill>
+                  <AssessorCore score={organizationScore} label="Organizacao" />
                 </div>
-                <div className="contact-form">
-                  <div className="field">
-                    <label htmlFor="reflection">O que dificultou hoje?</label>
-                    <textarea id="reflection" value={reflection} onChange={(event) => setReflection(event.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="difficulty">Dificuldade percebida</label>
-                    <select id="difficulty">
-                      <option>Leve</option>
-                      <option>Média</option>
-                      <option>Alta</option>
-                    </select>
-                  </div>
+                <TimelineMap events={events} tasks={tasks} />
+              </HolographicPanel>
+              <HolographicPanel label="Alertas inteligentes">
+                <div className="stack-list">
+                  {[
+                    ["Primeiro compromisso", `${briefing.firstEvent.title} as ${briefing.firstEvent.start}`],
+                    ["Tarefa principal", briefing.mainTask.title],
+                    ["Conflitos", conflicts.length ? `${conflicts.length} conflito detectado` : "Nenhum conflito"],
+                    ["Tempo livre", freeWindows[0] ? `${freeWindows[0].minutes} min livres` : "Sem bloco livre longo"]
+                  ].map(([title, body]) => (
+                    <div className="stack-item" key={title}>
+                      <strong>{title}</strong>
+                      <span>{body}</span>
+                    </div>
+                  ))}
                 </div>
-              </section>
-              <aside className="panel dashboard-card">
-                <h2>Impacto ao concluir</h2>
-                <p className="premium-copy">
-                  A conclusão atualiza a continuidade, libera reflexão curta e recalibra a próxima ação.
-                </p>
-                <HabitHeatmap completed={done} />
-              </aside>
+              </HolographicPanel>
+            </div>
+            <div className="cards-grid">
+              <MorningBriefingCard />
+              <NightReviewCard />
+              <ReplanCard />
             </div>
           </div>
         );
-      case "plan":
+      case "assistant":
+        return (
+          <div className="dashboard-section">
+            <div className="dashboard-grid">
+              <HolographicPanel className="dashboard-card" label="Assessor IA">
+                <h1>Chat por texto e audio com confirmacao.</h1>
+                <p className="premium-copy">
+                  Em modo demo, a interpretacao e deterministica. Com `OPENAI_API_KEY`, a API pode chamar um modelo real
+                  mantendo o mesmo contrato de confirmacao.
+                </p>
+                <CommandComposer large />
+                <ChatPanel />
+              </HolographicPanel>
+              <HolographicPanel label="Rascunho antes de agir">
+                <DraftActionCard draft={draft} onConfirm={confirmDraft} onDiscard={() => setDraft(undefined)} />
+              </HolographicPanel>
+            </div>
+          </div>
+        );
       case "calendar":
         return (
           <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label={active === "plan" ? "Meu plano" : "Calendário"}>
-              <div className="module-title">
-                <div>
-                  <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>Plano de 30 dias adaptável.</h1>
-                  <p>Quatro semanas, missões, versões mínimas, marcos, bloqueios e check-ins.</p>
-                </div>
-                <StatusPill>{done.length} dias concluídos</StatusPill>
-              </div>
-              <PlanTimeline missions={result.thirtyDayPlan} />
-            </ScannerPanel>
+            <HolographicPanel className="dashboard-card" label="Agenda inteligente">
+              <h1>Dia, semana, mes, recorrencias e conflitos no mesmo mapa.</h1>
+              <p className="premium-copy">
+                Google Calendar esta preparado por API. Sem credenciais, o modo demo mostra como eventos, duracao,
+                localizacao, participantes e deslocamento serao tratados.
+              </p>
+              <TimelineMap events={events} tasks={tasks} />
+            </HolographicPanel>
             <div className="cards-grid">
-              {weeklyPlan.map((week) => (
-                <article className="info-card" key={week.week}>
-                  <span className="step-num">Semana {week.week}</span>
-                  <h3 style={{ marginTop: 12 }}>{week.theme}</h3>
-                  <p>{week.objective}</p>
-                  <div className="progress-track">
-                    <span style={{ width: `${Math.min(100, week.missions.filter((mission) => done.includes(mission.day)).length * 14)}%` }} />
-                  </div>
+              {events.map((event) => (
+                <article className="info-card" key={event.id}>
+                  <StatusPill>{event.date}</StatusPill>
+                  <h3>{event.title}</h3>
+                  <p>
+                    {event.start} - {event.end}
+                    {event.travelMinutes ? ` · ${event.travelMinutes} min de deslocamento` : ""}
+                  </p>
+                  <small>{event.source === "google_demo" ? "Evento demo do Google Calendar" : "Criado no Virada IA"}</small>
                 </article>
               ))}
             </div>
-            <section className="panel dashboard-card">
-              <div className="day-grid">
-                {result.thirtyDayPlan.map((mission) => (
-                  <button className={`day-cell ${done.includes(mission.day) ? "done" : ""}`} key={mission.day} onClick={() => completeMission(mission.day)} type="button">
-                    <strong style={{ color: "var(--text)" }}>Dia {mission.day}</strong>
-                    <br />
-                    {mission.title}
-                    <br />
-                    <span style={{ color: "var(--muted)" }}>{mission.minutes} min</span>
-                  </button>
-                ))}
-              </div>
-            </section>
           </div>
         );
-      case "diagnostic":
-      case "pillars":
+      case "tasks":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Tarefas">
+              <h1>Tarefas com prioridade, prazo, duracao, projeto e subtarefas.</h1>
+              <p className="premium-copy">Tarefas grandes sao quebradas em passos menores e podem receber lembretes em camadas.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {tasks.map((task) => (
+                <article className={`info-card task-card ${task.status}`} key={task.id}>
+                  <div className="module-title">
+                    <div>
+                      <StatusPill tone={task.priority === "critica" ? "red" : task.priority === "alta" ? "amber" : "blue"}>{task.priority}</StatusPill>
+                      <h3>{task.title}</h3>
+                      <p>
+                        {task.due}
+                        {task.time ? ` as ${task.time}` : ""} · {task.durationMinutes} min
+                      </p>
+                    </div>
+                    <button className="icon-button" type="button" onClick={() => toggleTask(task.id)} aria-label="Alternar tarefa">
+                      <Check size={18} />
+                    </button>
+                  </div>
+                  <ul className="check-list">
+                    {task.subtasks.map((subtask) => (
+                      <li key={subtask}>
+                        <Check size={15} /> {subtask}
+                      </li>
+                    ))}
+                  </ul>
+                  <small>{task.reminders.join(" · ")}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
+      case "projects":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Projetos">
+              <h1>Projetos viram objetivo, prazo, progresso e proximos passos.</h1>
+              <p className="premium-copy">O assessor acompanha atrasos e sugere a menor proxima acao antes do projeto virar ruído.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {projects.map((project) => (
+                <article className="info-card" key={project.id}>
+                  <StatusPill>{project.deadline}</StatusPill>
+                  <h3>{project.title}</h3>
+                  <p>{project.goal}</p>
+                  <div className="progress-track">
+                    <span style={{ width: `${project.progress}%` }} />
+                  </div>
+                  <ul className="check-list">
+                    {project.nextSteps.map((step) => (
+                      <li key={step}>
+                        <ChevronRight size={15} /> {step}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
+      case "routines":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Rotinas">
+              <h1>Rotinas criadas por linguagem natural.</h1>
+              <p className="premium-copy">Rotinas podem ser diarias, semanais, mensais, pausadas ou reduzidas em dias cheios.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {routines.map((routine) => (
+                <article className="info-card" key={routine.id}>
+                  <StatusPill tone={routine.status === "ativa" ? "cyan" : "amber"}>{routine.status}</StatusPill>
+                  <h3>{routine.title}</h3>
+                  <p>{routine.schedule}</p>
+                  <p>Versao reduzida: {routine.reducedVersion}</p>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() =>
+                      setRoutines((items) =>
+                        items.map((item) => (item.id === routine.id ? { ...item, status: item.status === "ativa" ? "pausada" : "ativa" } : item))
+                      )
+                    }
+                  >
+                    {routine.status === "ativa" ? "Pausar" : "Reativar"} <Pause size={16} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
+      case "inbox":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Caixa de entrada">
+              <h1>Despeje tudo aqui. O assessor classifica.</h1>
+              <p className="premium-copy">Ideias, audios, arquivos, compromissos e lembretes entram como inbox antes de virar acao confirmada.</p>
+              <CommandComposer />
+            </HolographicPanel>
+            <InboxList />
+          </div>
+        );
+      case "focus":
         return (
           <div className="dashboard-section">
             <div className="dashboard-hero">
-              <ScannerPanel className="dashboard-card" label="Mapa do seu momento">
-                <ProgressCore score={result.viradaIndex} confidence={result.confidence} trend="linha base" />
-                <h2 style={{ marginTop: 18 }}>Principal bloqueio: {result.mainBlocker.name}</h2>
-                <p className="premium-copy">{result.pattern}</p>
-                <div className="notice">Limitação: análise educacional baseada nas respostas fornecidas, sem diagnóstico médico.</div>
-              </ScannerPanel>
-              <ScannerPanel label="Radar dos pilares">
-                <PillarRadar scores={result.pillarScores} />
-              </ScannerPanel>
-            </div>
-            <div className="cards-grid">
-              {result.pillarScores.map((pillar) => {
-                const trend = getPillarTrend(pillar.key, pillar.score);
-                return (
-                  <article className="info-card" key={pillar.key}>
-                    <StatusPill tone={trend.trend >= 0 ? "green" : "red"}>{trend.trend >= 0 ? `+${trend.trend}` : trend.trend}</StatusPill>
-                    <h3 style={{ marginTop: 12 }}>{pillar.name}</h3>
-                    <p>{pillar.description}</p>
-                    <div className="pillar-score">
-                      <span style={{ width: `${pillar.score}%`, background: pillar.color }} />
-                    </div>
-                  </article>
-                );
-              })}
+              <HolographicPanel className="dashboard-card" label="Modo foco">
+                <h1>{formatDuration(focusSeconds)}</h1>
+                <p className="premium-copy">Tarefa atual: {briefing.mainTask.title}. Passo imediato: {briefing.mainTask.subtasks[0]}.</p>
+                <div className="inline-actions">
+                  <button className="button" type="button" onClick={() => setFocusRunning((value) => !value)}>
+                    {focusRunning ? "Pausar" : "Iniciar foco"} {focusRunning ? <Pause size={17} /> : <Play size={17} />}
+                  </button>
+                  <button className="button secondary" type="button" onClick={() => setFocusSeconds(0)}>
+                    Reiniciar <RefreshCcw size={17} />
+                  </button>
+                </div>
+              </HolographicPanel>
+              <HolographicPanel label="Bloqueio visual">
+                <div className="focus-shield">
+                  <Moon size={28} />
+                  <h3>Distrações silenciadas</h3>
+                  <p>Anotacoes rapidas ficam aqui para nao abrir novas abas durante o foco.</p>
+                </div>
+              </HolographicPanel>
             </div>
           </div>
         );
-      case "patterns":
-      case "priorities":
+      case "followups":
         return (
           <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label={active === "patterns" ? "Padrões identificados" : "Mapa de prioridades"}>
-              <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-                {active === "patterns" ? "Entenda o padrão antes de repetir o ciclo." : "Ordem clara para decidir o que vem primeiro."}
-              </h1>
-              <p className="premium-copy">
-                Cada item mostra evidência, impacto e ação recomendada. Nada aqui é depoimento ou dado real de terceiros.
-              </p>
-            </ScannerPanel>
-            {active === "patterns" ? (
-              <ConnectedNodes items={behaviorPatterns.map((pattern) => ({ title: pattern.title, detail: `${pattern.evidence} Ação: ${pattern.action}` }))} />
-            ) : (
-              <div className="comparison-grid">
-                {priorityMap.map((zone) => (
-                  <article className="info-card" key={zone.zone}>
-                    <StatusPill tone={zone.tone === "green" ? "green" : zone.tone === "blue" ? "blue" : "gold"}>{zone.zone}</StatusPill>
-                    <ul className="check-list" style={{ marginTop: 14 }}>
-                      {zone.items.map((item) => (
-                        <li key={item}>
-                          <Target size={16} color="#5cffb0" /> {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            )}
+            <HolographicPanel className="dashboard-card" label="Follow-ups">
+              <h1>O que depende de outras pessoas fica rastreavel.</h1>
+              <p className="premium-copy">A IA acompanha prazos de resposta e prepara cobrancas, mas nao envia sem confirmacao.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {followUps.map((followUp) => (
+                <article className="info-card" key={followUp.id}>
+                  <StatusPill tone="amber">{followUp.checkAt}</StatusPill>
+                  <h3>{followUp.title}</h3>
+                  <p>Aguardando: {followUp.waitingFor}</p>
+                  <p>{followUp.nextAction}</p>
+                </article>
+              ))}
+            </div>
           </div>
         );
-      case "goals":
-      case "routine":
-      case "habits":
-      case "focus":
-      case "finance":
-      case "checkins":
-      case "evolution":
-        return renderEvolutionArea(active);
-      case "assistant":
-      case "recommendations":
-      case "replan":
-      case "simulations":
-        return renderIntelligenceArea(active);
-      case "reports":
-      case "achievements":
-      case "library":
+      case "memory":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Memoria pessoal">
+              <h1>Memoria controlada pelo usuario.</h1>
+              <p className="premium-copy">Tudo que o assessor sabe sobre voce fica visivel, editavel e removivel.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {memories.map((memory) => (
+                <article className="info-card" key={memory.id}>
+                  <StatusPill tone="blue">{memory.category}</StatusPill>
+                  <h3>{memory.label}</h3>
+                  <p>{memory.value}</p>
+                  <button className="button ghost" type="button" onClick={() => removeMemory(memory.id)}>
+                    Excluir memoria <Trash2 size={16} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
       case "notifications":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Notificacoes">
+              <h1>Lembretes em camadas, nao apenas no horario.</h1>
+              <p className="premium-copy">Antecipado, proximo, no horario, acompanhamento depois e reagendamento se nao concluir.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {demoNotifications.map((notification) => (
+                <article className="info-card" key={notification.id}>
+                  <StatusPill tone={notification.consent ? "cyan" : "amber"}>{notification.consent ? "ativo" : "consentimento pendente"}</StatusPill>
+                  <h3>{notification.title}</h3>
+                  <p>{notification.channel} · {notification.cadence}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
+      case "integrations":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Integracoes">
+              <h1>Google Calendar, WhatsApp, Web Push, e-mail e OpenAI preparados.</h1>
+              <p className="premium-copy">Credenciais conectam canais reais. Sem credenciais, o modo demo deixa claro o que falta.</p>
+            </HolographicPanel>
+            <div className="cards-grid">
+              {integrations.map((integration) => (
+                <article className="info-card" key={integration.id}>
+                  <StatusPill tone={integration.status === "ready" ? "cyan" : integration.status === "connected" ? "cyan" : "amber"}>
+                    {integration.status}
+                  </StatusPill>
+                  <h3>{integration.label}</h3>
+                  <p>{integration.description}</p>
+                  <small>{integration.requiredEnv.join(" · ") || "Sem variavel obrigatoria"}</small>
+                  <button className="button secondary" type="button" onClick={() => setActive("settings")}>
+                    Configurar
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        );
       case "subscription":
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Assinatura">
+              <h1>Pagamento preservado, produto novo liberado por acesso seguro.</h1>
+              <p className="premium-copy">
+                Checkout e webhook continuam separados. Em producao, liberacao deve depender de webhook valido ou consulta
+                segura ao provedor.
+              </p>
+              <div className="offer-grid">
+                <article className="price-card">
+                  <StatusPill>Atual</StatusPill>
+                  <h3>Assessor demo</h3>
+                  <div className="price">R$ 47</div>
+                  <p>Acesso local para validar fluxo e UX.</p>
+                  <Link className="button" href="/checkout">
+                    Abrir checkout
+                  </Link>
+                </article>
+                <article className="price-card featured">
+                  <StatusPill tone="amber">Pro</StatusPill>
+                  <h3>Assessor Pro</h3>
+                  <div className="price">R$ 59,90/mês</div>
+                  <p>WhatsApp, push, briefings e historico.</p>
+                  <Link className="button" href="/checkout?plan=pro">
+                    Atualizar
+                  </Link>
+                </article>
+              </div>
+            </HolographicPanel>
+          </div>
+        );
       case "settings":
-      case "help":
-        return renderAccountArea(active);
+        return (
+          <div className="dashboard-section">
+            <HolographicPanel className="dashboard-card" label="Configuracoes">
+              <h1>Preferencias, privacidade e horario silencioso.</h1>
+              <p className="premium-copy">O assessor respeita seus limites antes de mandar notificacoes ou sugerir encaixes.</p>
+              <div className="contact-form">
+                <div className="field">
+                  <label htmlFor="work-hours">Horario de trabalho</label>
+                  <input id="work-hours" defaultValue="09:00 as 18:00" />
+                </div>
+                <div className="field">
+                  <label htmlFor="silent-hours">Horario silencioso</label>
+                  <input id="silent-hours" defaultValue="22:00 as 07:00" />
+                </div>
+                <label className="checkbox-line">
+                  <input type="checkbox" defaultChecked /> Pedir confirmacao antes de qualquer acao externa.
+                </label>
+                <label className="checkbox-line">
+                  <input type="checkbox" defaultChecked /> Permitir memoria pessoal editavel.
+                </label>
+              </div>
+            </HolographicPanel>
+          </div>
+        );
       default:
         return null;
     }
   }
 
-  function renderEvolutionArea(id: string) {
-    const titles: Record<string, string> = {
-      goals: "Metas transformadas em próximos passos.",
-      routine: "Rotina simples, flexível e compatível com sua realidade.",
-      habits: "Hábitos acompanhados sem gamificação infantil.",
-      focus: "Sessões de foco curtas e rastreáveis.",
-      finance: "Organização financeira educacional e manual.",
-      checkins: "Check-in semanal para adaptar sem apagar histórico.",
-      evolution: "Evolução visual com dados reais quando existirem."
-    };
-
+  function CommandComposer({ large = false }: { large?: boolean }) {
     return (
-      <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>{titles[id]}</h1>
-          <p className="premium-copy">Cada área tem função prática e estado demo explícito enquanto não há backend persistente.</p>
-        </ScannerPanel>
-
-        {id === "goals" ? (
-          <div className="cards-grid">
-            {goals.map((goal) => (
-              <article className="info-card" key={goal.title}>
-                <StatusPill tone={goal.status === "Prioridade" ? "green" : "blue"}>{goal.status}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{goal.title}</h3>
-                <p>{goal.why}</p>
-                <div className="pillar-score"><span style={{ width: `${goal.progress}%` }} /></div>
-                <p><strong>Próximo passo:</strong> {goal.nextStep}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "routine" ? (
-          <div className="cards-grid">
-            {routineBlocks.map((block) => (
-              <article className="info-card" key={block.title}>
-                <StatusPill tone="gold">{block.period}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{block.title}</h3>
-                <p>{block.duration} · {block.flexibility}</p>
-                <p>Versão mínima: {block.minimal}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "habits" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <HabitHeatmap completed={done} />
-            </section>
-            <aside className="panel dashboard-card">
-              <h2>Sequência e retomada</h2>
-              <p className="premium-copy">{done.length} registros concluídos. Melhor período: 4 dias. Dificuldade atual: média.</p>
-            </aside>
-          </div>
-        ) : null}
-
-        {id === "focus" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <h2>Sessão rápida</h2>
-              <p className="premium-copy">Intenção: avançar na ação principal sem notificações.</p>
-              <button className="button" type="button" onClick={() => setFocusRunning((value) => !value)}>
-                {focusRunning ? "Pausar sessão" : "Iniciar 20 minutos"} <Timer size={17} />
-              </button>
-            </section>
-            <aside className="panel dashboard-card">
-              <FloatingMetric label="Tempo focado" value={`${focusMinutes} min`} detail="Histórico local desta sessão" />
-            </aside>
-          </div>
-        ) : null}
-
-        {id === "finance" ? (
-          <div className="cards-grid">
-            {financeEntries.map((entry) => (
-              <article className="info-card" key={entry.category}>
-                <CreditCard color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{entry.category}</h3>
-                <p>{entry.value} · {entry.signal}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "checkins" ? (
-          <section className="panel dashboard-card">
-            <div className="contact-form">
-              {["Quantas ações concluiu?", "O que ficou difícil?", "O plano ficou pesado?", "O que deve ser reduzido?"].map((question) => (
-                <div className="field" key={question}>
-                  <label>{question}</label>
-                  <input placeholder="Resposta curta" />
-                </div>
-              ))}
-              <button className="button" type="button">Enviar check-in <Check size={17} /></button>
-            </div>
-          </section>
-        ) : null}
-
-        {id === "evolution" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <div className="module-title">
-                <div>
-                  <h2>Índice ao longo do tempo</h2>
-                  <p>Demonstração até haver histórico real.</p>
-                </div>
-                <StatusPill tone="blue">Exemplo</StatusPill>
-              </div>
-              <div className="plan-timeline">
-                {evolution.map((value, index) => (
-                  <article className="timeline-day" key={index}>
-                    <span>Marco {index + 1}</span>
-                    <strong>{value}/100</strong>
-                    <small>Índice estimado</small>
-                  </article>
-                ))}
-              </div>
-            </section>
-            <aside className="panel dashboard-card">
-              <HabitHeatmap completed={done} />
-            </aside>
-          </div>
-        ) : null}
+      <div className={`assessor-composer ${large ? "large" : ""}`}>
+        <textarea
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Ex: preciso terminar o orcamento ate quarta, me lembra de ligar para o Joao sexta..."
+          aria-label="Mensagem para o assessor"
+        />
+        <div className="composer-actions">
+          <button className="button secondary" type="button" onClick={simulateAudio}>
+            <Mic size={17} /> Audio demo
+          </button>
+          <AudioWave active={audioActive} />
+          <button className="button" type="button" onClick={() => submitCommand()}>
+            Organizar <SparkIcon />
+          </button>
+        </div>
       </div>
     );
   }
 
-  function renderIntelligenceArea(id: string) {
+  function ChatPanel() {
     return (
-      <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-            {id === "assistant" && "Guia Virada com contexto do seu plano."}
-            {id === "recommendations" && "Recomendações com motivo, evidência e impacto."}
-            {id === "replan" && "Replaneje sem apagar o que aconteceu."}
-            {id === "simulations" && "Simule cenários antes de mudar o plano."}
-          </h1>
-          <p className="premium-copy">A IA não prescreve, não faz diagnóstico médico e não inventa dados fora do seu histórico.</p>
-        </ScannerPanel>
-
-        {id === "assistant" ? <AICompanionPreview result={result} /> : null}
-
-        {id === "recommendations" ? (
-          <div className="cards-grid">
-            {smartRecommendations.map((item) => (
-              <article className="info-card" key={item.title}>
-                <StatusPill>{item.impact} impacto</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{item.title}</h3>
-                <p>{item.reason}</p>
-                <p><strong>Evidência:</strong> {item.evidence}</p>
-                <div className="mission-actions">
-                  <button className="button secondary" type="button">Aceitar</button>
-                  <button className="button ghost" type="button">Adaptar</button>
-                </div>
-              </article>
-            ))}
+      <div className="chat-panel">
+        {chat.map((message) => (
+          <div className={`chat-message ${message.role}`} key={message.id}>
+            <small>{message.role === "assistant" ? "Assessor" : "Voce"}</small>
+            <p>{message.text}</p>
           </div>
-        ) : null}
-
-        {id === "replan" ? (
-          <div className="comparison-grid">
-            <article className="info-card">
-              <StatusPill tone="gold">Antes</StatusPill>
-              <h3 style={{ marginTop: 12 }}>Missão de 30 minutos</h3>
-              <p>Exigia energia alta e dependia de horário ideal.</p>
-            </article>
-            <article className="info-card">
-              <StatusPill>Depois</StatusPill>
-              <h3 style={{ marginTop: 12 }}>Missão de 12 minutos</h3>
-              <p>Reduzida para caber no dia real, mantendo o mesmo objetivo.</p>
-            </article>
-          </div>
-        ) : null}
-
-        {id === "simulations" ? (
-          <div className="cards-grid">
-            {["Se eu tiver só 10 minutos", "Se eu falhar três dias", "Se minha rotina mudar"].map((scenario) => (
-              <article className="info-card" key={scenario}>
-                <h3>{scenario}</h3>
-                <p>A simulação reduz o plano, preserva histórico e sugere uma próxima ação possível.</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+        ))}
       </div>
     );
   }
 
-  function renderAccountArea(id: string) {
+  function InboxList() {
     return (
-      <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-            {id === "reports" && "Relatórios com data, versão, confiança e limitações."}
-            {id === "achievements" && "Conquistas discretas, sem ruído infantil."}
-            {id === "library" && "Biblioteca prática filtrada pelo diagnóstico."}
-            {id === "notifications" && "Alertas úteis, consentidos e controláveis."}
-            {id === "subscription" && "Assinatura, pagamentos e cancelamento simples."}
-            {id === "settings" && "Preferências, privacidade e dados."}
-            {id === "help" && "Ajuda clara sobre produto, limites e suporte."}
-          </h1>
-          <p className="premium-copy">A área preserva transparência, segurança e controle do usuário.</p>
-        </ScannerPanel>
-
-        {id === "reports" ? (
-          <div className="cards-grid">
-            {["Relatório inicial", "Relatório semanal", "Relatório mensal"].map((report, index) => (
-              <article className="info-card" key={report}>
-                <FileText color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{report}</h3>
-                <p>{index === 0 ? "Pronto em modo demo com PDF." : "Será gerado quando houver histórico real."}</p>
-              </article>
-            ))}
+      <div className="stack-list">
+        {inboxItems.map((item) => (
+          <div className="stack-item" key={item.id}>
+            <strong>{item.text}</strong>
+            <span>
+              {item.type} · {item.status}
+            </span>
           </div>
-        ) : null}
-
-        {id === "achievements" ? (
-          <div className="cards-grid">
-            {achievements.map((achievement) => (
-              <article className="info-card" key={achievement.title}>
-                <Trophy color={achievement.unlocked ? "#d4ba74" : "#69758a"} size={22} />
-                <h3 style={{ marginTop: 12 }}>{achievement.title}</h3>
-                <p>{achievement.detail}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "library" ? (
-          <div className="cards-grid">
-            {libraryItems.map((item) => (
-              <article className="info-card" key={item.title}>
-                <StatusPill tone="blue">{item.pillar}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{item.title}</h3>
-                <p>{item.minutes} minutos de leitura prática.</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {["notifications", "subscription", "settings", "help"].includes(id) ? (
-          <div className="cards-grid">
-            {dashboardEmptyStates.map((state) => (
-              <article className="info-card" key={state.state}>
-                <HelpCircle color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{state.title}</h3>
-                <p>{state.body}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+        ))}
       </div>
     );
   }
+
+  function RecommendationList() {
+    return (
+      <div className="stack-list">
+        {[
+          freeWindows[0]
+            ? `Colocar "${briefing.mainTask.title}" no bloco livre de ${freeWindows[0].minutes} minutos.`
+            : "Reduzir tarefa principal para uma versao de 10 minutos.",
+          conflicts.length ? "Resolver conflito antes de enviar lembretes." : "Agenda sem conflito. Proteger foco antes do proximo compromisso.",
+          "Preparar resumo da noite com pendentes e imprevistos."
+        ].map((recommendation) => (
+          <div className="stack-item" key={recommendation}>
+            <strong>Recomendacao da IA</strong>
+            <span>{recommendation}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function MorningBriefingCard() {
+    return (
+      <article className="info-card">
+        <StatusPill>Briefing da manha</StatusPill>
+        <h3>{briefing.greeting}</h3>
+        <p>Primeiro compromisso: {briefing.firstEvent.title}.</p>
+        <p>Sugestao: {briefing.suggestion}</p>
+      </article>
+    );
+  }
+
+  function NightReviewCard() {
+    return (
+      <article className="info-card">
+        <StatusPill tone="blue">Resumo da noite</StatusPill>
+        <h3>Fechamento com replanejamento.</h3>
+        <ul className="check-list">
+          {buildNightReview().map((question) => (
+            <li key={question}>
+              <ChevronRight size={15} /> {question}
+            </li>
+          ))}
+        </ul>
+      </article>
+    );
+  }
+
+  function ReplanCard() {
+    return (
+      <article className="info-card">
+        <StatusPill tone="amber">Replanejamento</StatusPill>
+        <h3>{replanSuggestions[0]?.task.title ?? "Nenhuma pendencia critica"}</h3>
+        <p>{replanSuggestions[0]?.suggestion ?? "Quando algo atrasar, vou sugerir novo horario e pedir confirmacao."}</p>
+      </article>
+    );
+  }
+}
+
+function SparkIcon() {
+  return <Zap size={17} />;
+}
+
+function formatClock(date: Date) {
+  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function addMinutes(time: string, minutes: number) {
+  if (!/^\d{2}:\d{2}$/.test(time)) return "A definir";
+  const [hour, minute] = time.split(":").map(Number);
+  const total = hour * 60 + minute + minutes;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function formatDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
 }

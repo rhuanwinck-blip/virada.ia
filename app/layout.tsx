@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
 import { inter, sora } from "@/app/fonts";
+import { PwaBoot } from "@/components/PwaBoot";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
-  title: "Virada IA",
+  title: "Virada IA | Assessor pessoal proativo",
   description:
-    "Análise personalizada de hábitos, rotina e direção para descobrir o que mudar primeiro.",
+    "Fale o que precisa fazer. A inteligencia artificial organiza agenda, tarefas, compromissos, lembretes e replaneja seu dia.",
   applicationName: "Virada IA",
+  manifest: "/manifest.webmanifest",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${sora.variable}`}>
-      <body>{children}</body>
+      <body>
+        <PwaBoot />
+        {children}
+      </body>
     </html>
   );
 }

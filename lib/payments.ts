@@ -4,6 +4,7 @@ export type CheckoutInput = {
   plan: "one-time" | "pro";
   email: string;
   diagnosticId?: string;
+  contextId?: string;
 };
 
 export type CheckoutSession = {
@@ -19,7 +20,7 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<Check
       id: `demo_${Date.now()}`,
       status: "approved",
       provider: "demo",
-      checkoutUrl: `/checkout?status=approved&plan=${input.plan}`
+      checkoutUrl: `/onboarding?payment=approved&plan=${input.plan}`
     };
   }
 
