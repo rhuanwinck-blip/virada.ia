@@ -54,7 +54,7 @@ function test(name, fn) {
 const questionsModule = loadTs(path.join(root, "lib/questions.ts"));
 const scoringModule = loadTs(path.join(root, "lib/scoring.ts"));
 const securityModule = loadTs(path.join(root, "lib/security.ts"));
-const productExperienceModule = loadTs(path.join(root, "lib/product-experience.ts"));
+const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
 
 test("scoreDiagnostic is deterministic", () => {
   const first = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
@@ -90,17 +90,53 @@ test("webhook signatures validate safely", () => {
   assert.equal(securityModule.verifyWebhookSignature(payload, "bad", "secret"), false);
 });
 
-test("dashboard navigation has no empty or duplicate sections", () => {
-  const ids = productExperienceModule.dashboardNavigation.map((item) => item.id);
+test("assistant navigation matches the proactive product map", () => {
+  const ids = assistantCoreModule.assistantNavigation.map((item) => item.id);
+  const labels = assistantCoreModule.assistantNavigation.map((item) => item.label);
   assert.equal(new Set(ids).size, ids.length);
-  assert.ok(productExperienceModule.dashboardNavigation.length >= 26);
-  assert.ok(productExperienceModule.dashboardNavigation.every((item) => item.label && item.description && item.group));
+  assert.equal(assistantCoreModule.assistantNavigation.length, 15);
+  assert.deepEqual(labels, [
+    "Central",
+    "Meu Dia",
+    "Assessor IA",
+    "Agenda",
+    "Tarefas",
+    "Projetos",
+    "Rotinas",
+    "Caixa de Entrada",
+    "Foco",
+    "Follow-ups",
+    "Memoria",
+    "Notificacoes",
+    "Integracoes",
+    "Assinatura",
+    "Configuracoes"
+  ]);
+  assert.ok(assistantCoreModule.assistantNavigation.every((item) => item.label && item.description && item.group));
 });
 
-test("weekly plan covers all 30 missions", () => {
-  const result = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
-  const weeks = productExperienceModule.buildWeeklyPlan(result);
-  const missionCount = weeks.reduce((sum, week) => sum + week.missions.length, 0);
-  assert.equal(weeks.length, 4);
-  assert.equal(missionCount, 30);
+test("assistant parser turns natural Portuguese into safe draft actions", () => {
+  const event = assistantCoreModule.parseAssistantIntent("Amanha as 14h tenho dentista.");
+  assert.equal(event.type, "event");
+  assert.equal(event.dateLabel, "Amanha");
+  assert.equal(event.timeLabel, "14:00");
+  assert.equal(event.needsConfirmation, true);
+
+  const reminder = assistantCoreModule.parseAssistantIntent("Me lembra de ligar para o Joao sexta.");
+  assert.equal(reminder.type, "reminder");
+  assert.equal(reminder.dateLabel, "Sexta");
+  assert.ok(reminder.missing.includes("horario"));
+
+  const routine = assistantCoreModule.parseAssistantIntent("Toda segunda preciso conferir as vendas.");
+  assert.equal(routine.type, "routine");
+  assert.equal(routine.dateLabel, "Segunda");
+});
+
+test("assistant day planning detects organization signals", () => {
+  const score = assistantCoreModule.buildDayOrganizationScore(assistantCoreModule.demoTasks, assistantCoreModule.demoEvents);
+  const briefing = assistantCoreModule.buildMorningBriefing();
+  const windows = assistantCoreModule.findFreeWindows(assistantCoreModule.demoEvents);
+  assert.ok(score >= 0 && score <= 100);
+  assert.ok(briefing.greeting.includes("Bom dia"));
+  assert.ok(Array.isArray(windows));
 });
