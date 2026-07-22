@@ -54,6 +54,7 @@ function test(name, fn) {
 const questionsModule = loadTs(path.join(root, "lib/questions.ts"));
 const scoringModule = loadTs(path.join(root, "lib/scoring.ts"));
 const securityModule = loadTs(path.join(root, "lib/security.ts"));
+const productExperienceModule = loadTs(path.join(root, "lib/product-experience.ts"));
 
 test("scoreDiagnostic is deterministic", () => {
   const first = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
@@ -87,4 +88,19 @@ test("webhook signatures validate safely", () => {
   const signature = securityModule.signPayload(payload, "secret");
   assert.equal(securityModule.verifyWebhookSignature(payload, signature, "secret"), true);
   assert.equal(securityModule.verifyWebhookSignature(payload, "bad", "secret"), false);
+});
+
+test("dashboard navigation has no empty or duplicate sections", () => {
+  const ids = productExperienceModule.dashboardNavigation.map((item) => item.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(productExperienceModule.dashboardNavigation.length >= 26);
+  assert.ok(productExperienceModule.dashboardNavigation.every((item) => item.label && item.description && item.group));
+});
+
+test("weekly plan covers all 30 missions", () => {
+  const result = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
+  const weeks = productExperienceModule.buildWeeklyPlan(result);
+  const missionCount = weeks.reduce((sum, week) => sum + week.missions.length, 0);
+  assert.equal(weeks.length, 4);
+  assert.equal(missionCount, 30);
 });
