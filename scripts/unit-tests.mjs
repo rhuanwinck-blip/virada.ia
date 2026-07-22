@@ -41,20 +41,26 @@ function loadTs(file) {
   return localModule.exports;
 }
 
+const pendingTests = [];
+
 function test(name, fn) {
-  try {
-    fn();
-    console.log(`✓ ${name}`);
-  } catch (error) {
-    console.error(`✗ ${name}`);
-    throw error;
-  }
+  pendingTests.push(
+    Promise.resolve()
+      .then(fn)
+      .then(() => console.log(`✓ ${name}`))
+      .catch((error) => {
+        console.error(`✗ ${name}`);
+        throw error;
+      })
+  );
 }
 
 const questionsModule = loadTs(path.join(root, "lib/questions.ts"));
 const scoringModule = loadTs(path.join(root, "lib/scoring.ts"));
 const securityModule = loadTs(path.join(root, "lib/security.ts"));
 const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
+const financialProviderModule = loadTs(path.join(root, "lib/financial-provider.ts"));
+const personalOsModule = loadTs(path.join(root, "lib/personal-os.ts"));
 
 test("scoreDiagnostic is deterministic", () => {
   const first = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
@@ -88,6 +94,15 @@ test("webhook signatures validate safely", () => {
   const signature = securityModule.signPayload(payload, "secret");
   assert.equal(securityModule.verifyWebhookSignature(payload, signature, "secret"), true);
   assert.equal(securityModule.verifyWebhookSignature(payload, "bad", "secret"), false);
+  assert.equal(
+    securityModule.verifyReplayProtectedSignature({
+      payload,
+      signature,
+      secret: "secret",
+      timestamp: String(Math.floor(Date.now() / 1000))
+    }),
+    true
+  );
 });
 
 test("assistant navigation matches the proactive product map", () => {
@@ -130,6 +145,18 @@ test("assistant parser turns natural Portuguese into safe draft actions", () => 
   const routine = assistantCoreModule.parseAssistantIntent("Toda segunda preciso conferir as vendas.");
   assert.equal(routine.type, "routine");
   assert.equal(routine.dateLabel, "Segunda");
+
+  const financialQuery = assistantCoreModule.parseAssistantIntent("Quanto gastei com alimentacao neste mes?");
+  assert.equal(financialQuery.type, "financial_query");
+  assert.equal(financialQuery.needsConfirmation, true);
+
+  const financialGoal = assistantCoreModule.parseAssistantIntent("Quero juntar R$ 20.000 para comprar um carro.");
+  assert.equal(financialGoal.type, "financial_goal");
+  assert.equal(financialGoal.missing.includes("valor-alvo"), false);
+
+  const financialCommitment = assistantCoreModule.parseAssistantIntent("Preciso pagar o seguro ate sexta.");
+  assert.equal(financialCommitment.type, "financial_commitment");
+  assert.equal(financialCommitment.priority, "critica");
 });
 
 test("assistant day planning detects organization signals", () => {
@@ -140,3 +167,96 @@ test("assistant day planning detects organization signals", () => {
   assert.ok(briefing.greeting.includes("Bom dia"));
   assert.ok(Array.isArray(windows));
 });
+
+test("personal OS exposes exactly five connected main areas", () => {
+  const ids = personalOsModule.personalOsAreas.map((area) => area.id);
+  assert.deepEqual(ids, ["inicio", "jornada", "agenda", "financas", "agentes"]);
+  assert.equal(personalOsModule.journeyTabs.length, 12);
+  assert.equal(personalOsModule.agendaTabs.length, 10);
+  assert.equal(personalOsModule.financeTabs.length, 15);
+
+  const briefing = personalOsModule.buildPersonalOsBriefing();
+  assert.ok(briefing.summary.includes("fatura"));
+  assert.ok(briefing.nextCommitment);
+
+  const classified = personalOsModule.classifyUniversalInboxInput("Pagar o seguro sexta.");
+  assert.equal(classified.type, "compromisso_financeiro");
+  assert.equal(classified.requiresConfirmation, true);
+});
+
+test("financial provider abstraction exposes required Open Finance methods", () => {
+  const provider = new financialProviderModule.PluggyFinancialDataProvider();
+  const methods = [
+    "createConnectToken",
+    "createConnection",
+    "getConnectionStatus",
+    "listInstitutions",
+    "listAccounts",
+    "listBalances",
+    "listTransactions",
+    "listCreditCards",
+    "listBills",
+    "listInvestments",
+    "refreshConnection",
+    "revokeConnection",
+    "handleWebhook"
+  ];
+  assert.ok(methods.every((method) => typeof provider[method] === "function"));
+
+  const belvo = new financialProviderModule.BelvoFinancialDataProvider();
+  assert.equal(belvo.name, "belvo");
+});
+
+test("Pluggy sandbox returns masked read-only financial data", async () => {
+  const provider = new financialProviderModule.PluggyFinancialDataProvider();
+  const token = await provider.createConnectToken({ userId: "demo-user" });
+  assert.equal(token.provider, "pluggy");
+  assert.equal(token.sandbox, true);
+  assert.ok(token.connectToken.includes("sandbox"));
+
+  const accounts = await provider.listAccounts();
+  const transactions = await provider.listTransactions();
+  const cards = await provider.listCreditCards();
+  const bills = await provider.listBills();
+  const investments = await provider.listInvestments();
+
+  assert.ok(accounts.every((account) => account.numberMask.startsWith("****")));
+  assert.ok(transactions.every((transaction) => transaction.rawPreserved));
+  assert.ok(cards.every((card) => card.finalDigits.length === 4));
+  assert.ok(bills.length > 0);
+  assert.ok(investments.every((investment) => investment.sandbox));
+});
+
+test("financial categorization preserves raw fields and asks confirmation on low confidence", () => {
+  const market = financialProviderModule.categorizeTransaction({
+    description: "MERCADO SOL NASCENTE",
+    amount: -286.74
+  });
+  assert.equal(market.category, "mercado");
+  assert.equal(market.requiresConfirmation, false);
+
+  const unknown = financialProviderModule.categorizeTransaction({
+    description: "PAGAMENTO XYZ DESCONHECIDO",
+    amount: -42
+  });
+  assert.equal(unknown.category, "outros_gastos");
+  assert.equal(unknown.requiresConfirmation, true);
+});
+
+test("financial overview, subscriptions and AI sanitization are safe", () => {
+  const overview = financialProviderModule.buildFinancialOverview();
+  assert.equal(overview.sandbox, true);
+  assert.ok(overview.consolidatedBalance.amount > 0);
+  assert.ok(overview.subscriptions.length >= 1);
+
+  const sanitized = financialProviderModule.sanitizeForFinancialAgent({
+    overview,
+    accounts: financialProviderModule.sandboxAccounts,
+    transactions: financialProviderModule.sandboxTransactions
+  });
+  assert.ok(sanitized.sensitiveFieldsRemoved.includes("cpf"));
+  assert.ok(sanitized.accounts.every((account) => account.numberMask.startsWith("****")));
+  assert.equal(JSON.stringify(sanitized).includes("originalDescription"), false);
+});
+
+await Promise.all(pendingTests);
