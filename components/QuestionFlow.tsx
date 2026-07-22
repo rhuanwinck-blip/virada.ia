@@ -3,8 +3,10 @@
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnswerMap, painOptions, questions } from "@/lib/questions";
+import { PillarRadar, ProgressCore, ScannerPanel } from "@/components/PremiumVisuals";
 import { saveAnswers, saveContact } from "@/lib/local-store";
+import { AnswerMap, painOptions, questions } from "@/lib/questions";
+import { scoreDiagnostic } from "@/lib/scoring";
 
 const scaleLabels = ["Nunca", "Raro", "Às vezes", "Muito", "Sempre"];
 
@@ -23,6 +25,7 @@ export function QuestionFlow() {
   const isContactStep = step >= questions.length;
   const progress = Math.round((Math.min(step, questions.length) / questions.length) * 100);
   const question = questions[step];
+  const liveResult = useMemo(() => scoreDiagnostic({ ...answers }), [answers]);
   const canGoNext = isContactStep
     ? contact.name.trim().length > 1 && /.+@.+\..+/.test(contact.email)
     : answers[question.key] !== undefined;
@@ -122,9 +125,7 @@ export function QuestionFlow() {
                 <input
                   type="checkbox"
                   checked={contact.marketingConsent}
-                  onChange={(event) =>
-                    setContact({ ...contact, marketingConsent: event.target.checked })
-                  }
+                  onChange={(event) => setContact({ ...contact, marketingConsent: event.target.checked })}
                 />
                 Aceito receber acompanhamento e conteúdos úteis por e-mail. Posso cancelar quando quiser.
               </label>
@@ -185,20 +186,25 @@ export function QuestionFlow() {
         </div>
       </main>
 
-      <aside className="panel" style={{ padding: 22 }}>
-        <h2 style={{ fontSize: "1.25rem" }}>Análise segura</h2>
-        <p style={{ color: "var(--secondary)", lineHeight: 1.6 }}>
-          Suas respostas geram uma leitura educacional de hábitos. Não há julgamento e não há promessa de resultado
-          garantido.
-        </p>
-        <div className="bar-list">
-          {sidebar.map(([label, value]) => (
-            <div className="bar-label" key={label}>
-              <span>{label}</span>
-              <strong style={{ color: "var(--text)" }}>{value}</strong>
-            </div>
-          ))}
-        </div>
+      <aside className="dashboard-section">
+        <ScannerPanel label="Análise em tempo real">
+          <ProgressCore score={liveResult.viradaIndex} confidence={liveResult.confidence} trend={`${progress}% respondido`} />
+          <PillarRadar scores={liveResult.pillarScores} compact />
+          <p style={{ color: "var(--secondary)", lineHeight: 1.6 }}>
+            Suas respostas geram uma leitura educacional de hábitos. Não há julgamento e não há promessa de resultado
+            garantido.
+          </p>
+        </ScannerPanel>
+        <ScannerPanel label="Segurança">
+          <div className="bar-list">
+            {sidebar.map(([label, value]) => (
+              <div className="bar-label" key={label}>
+                <span>{label}</span>
+                <strong style={{ color: "var(--text)" }}>{value}</strong>
+              </div>
+            ))}
+          </div>
+        </ScannerPanel>
       </aside>
     </div>
   );
