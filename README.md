@@ -1,21 +1,24 @@
 # Virada IA
 
-Assessor pessoal proativo com inteligencia artificial.
+Sistema operacional pessoal com inteligência artificial.
 
-Promessa: **Fale o que precisa fazer. Seu assessor organiza o resto.**
+Promessa: **Sua vida inteira. Organizada por uma inteligência que trabalha com você.**
 
-## O Que Esta Implementado
+## O Que Está Implementado
 
-- Landing page futurista azul/ciano com conversa, audio, agenda preenchendo, briefing, replanejamento, memoria, integracoes, planos, seguranca e FAQ.
-- Dashboard reconstruido com as 15 areas pedidas: Central, Meu Dia, Assessor IA, Agenda, Tarefas, Projetos, Rotinas, Caixa de Entrada, Foco, Follow-ups, Memoria, Notificacoes, Integracoes, Assinatura e Configuracoes.
-- Chat central por texto e audio demo, com classificacao em tarefa, compromisso, lembrete, rotina, projeto, follow-up ou nota.
-- Confirmacao obrigatoria antes de criar ou preparar acoes importantes.
-- Meu Dia visual com horario atual, agenda, tarefas prioritarias, tempo livre, conflitos, recomendacao da IA e progresso do dia.
-- Onboarding pos-compra com ativacao do assessor, horarios, Google Calendar, notificacoes, WhatsApp, compromissos fixos, prioridades e primeiro dia.
-- APIs demo/ready para organizar comandos, preparar Google Calendar, registrar push e preparar WhatsApp sem enviar nada externo sem consentimento.
-- PWA com manifest e service worker.
-- Nova migration Supabase para tasks, events, reminders, projects, project_tasks, inbox_items, follow_ups, user_memories, push_subscriptions, integrations, assistant_messages, daily_briefings e daily_reviews.
-- Checkout, webhook de pagamento, seguranca e infraestrutura existente preservados.
+- Landing page longa, futurista azul, com hero imersivo, comando por voz, storytelling sticky, Início, Jornada, Agenda, Finanças, Open Finance, Agentes, Lembretes, Briefing, Replanejamento, Memória, Segurança, Planos, FAQ e CTA final.
+- Dashboard reconstruído com as cinco áreas principais: **Início**, **Sua Jornada**, **Agenda**, **Finanças** e **Agentes de IA**.
+- Início como central de comando com briefing, prioridades, compromissos, tarefas, contas próximas, saldo consolidado, últimas movimentações, metas, projetos e ações sugeridas.
+- Sua Jornada com áreas da vida, objetivos, metas, plano semanal, hábitos, rotinas, marcos, conquistas, revisão semanal e relatórios.
+- Agenda com hoje, calendário, compromissos, tarefas, projetos, rotinas, lembretes, follow-ups, caixa de entrada universal e modo foco.
+- Finanças com visão geral, extrato unificado, contas, cartões, faturas, categorias, orçamento, assinaturas, compromissos, contas a pagar/receber, metas financeiras, investimentos, relatórios e conexões.
+- Open Finance read-only com interface `FinancialDataProvider`, provider inicial `PluggyFinancialDataProvider`, `BelvoFinancialDataProvider` preparado e sandbox claro.
+- Fluxo funcional de conexão bancária sandbox via backend: token temporário, conexão, validação, refresh, revogação e remoção de dados.
+- Categorização financeira em camadas: regra determinística, correção do usuário e fallback de IA previsto.
+- Agente financeiro com dados agregados, mascarados e minimizados; sem CPF, senha, token, conta completa ou cartão completo.
+- Onboarding pós-cadastro/pagamento com objetivos, rotina, Google Calendar, notificações, WhatsApp opcional, Open Finance opcional, contas manuais, primeira meta e briefing.
+- PWA, Web Push, Google Calendar, WhatsApp Cloud API e e-mail preservados/preparados.
+- Pagamentos, checkout, webhook Mercado Pago, LGPD, APIs existentes e infraestrutura preservados.
 
 ## Rodar Localmente
 
@@ -26,7 +29,7 @@ pnpm dev
 
 Abra `http://localhost:3000`.
 
-## Validacao
+## Validação
 
 ```bash
 pnpm lint
@@ -38,42 +41,59 @@ pnpm db:migrate
 pnpm db:types
 ```
 
-## Variaveis
+## Variáveis
 
-Com `DEMO_MODE=true`, o app funciona sem credenciais reais.
+Com `DEMO_MODE=true` e `OPEN_FINANCE_SANDBOX=true`, o app funciona sem credenciais reais e marca os dados como sandbox.
 
-Para producao, configure conforme o canal usado:
+Principais variáveis:
 
+- `FINANCIAL_DATA_PROVIDER=pluggy`
+- `OPEN_FINANCE_SANDBOX=true`
+- `PLUGGY_CLIENT_ID`
+- `PLUGGY_CLIENT_SECRET`
+- `PLUGGY_WEBHOOK_SECRET`
+- `BELVO_SECRET_ID`
+- `BELVO_SECRET_PASSWORD`
+- `BELVO_WEBHOOK_SECRET`
+- `FINANCIAL_DATA_ENCRYPTION_KEY`
 - `OPENAI_API_KEY`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI`
-- `WHATSAPP_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `RESEND_API_KEY`
-- `EMAIL_FROM`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `MERCADO_PAGO_ACCESS_TOKEN`
 - `MERCADO_PAGO_WEBHOOK_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WEB_PUSH_PUBLIC_KEY`
+- `WEB_PUSH_PRIVATE_KEY`
+
+Nunca envie `.env` real ao GitHub.
 
 ## Arquitetura Principal
 
 - Landing: `components/AssessorLanding.tsx`
-- Dashboard: `components/DashboardClient.tsx`
-- Visuais: `components/AssessorVisuals.tsx`
-- Nucleo do produto: `lib/assistant-core.ts`
+- Dashboard Personal OS: `components/DashboardClient.tsx`
+- Visuais holográficos: `components/AssessorVisuals.tsx`
+- Produto Personal OS: `lib/personal-os.ts`
+- Open Finance/provider: `lib/financial-provider.ts`
+- Parser do assessor: `lib/assistant-core.ts`
+- Segurança: `lib/security.ts`
 - Onboarding: `components/OnboardingClient.tsx`
+- Finance APIs: `app/api/finance/*`
 - Checkout: `app/checkout/page.tsx` e `app/api/checkout/route.ts`
 - Pagamentos/webhook: `lib/payments.ts` e `app/api/payments/webhook/route.ts`
-- APIs do assessor: `app/api/assistant/organize/route.ts`, `app/api/integrations/google-calendar/route.ts`, `app/api/integrations/whatsapp/route.ts`, `app/api/notifications/push/route.ts`
-- Banco: `supabase/migrations/003_proactive_assessor_schema.sql`
+- Banco: `supabase/migrations/001_initial_schema.sql` a `004_personal_os_open_finance_schema.sql`
 
-## Documentacao
+## Documentação
 
+- `docs/personal-os-open-finance-audit.md`
+- `docs/personal-os-open-finance-redesign.md`
 - `docs/proactive-assessor-redesign.md`
-- `docs/redesign-audit.md`
+- `docs/security.md`
+- `docs/database.md`
 
-## Limites De Seguranca
+## Limites De Segurança
 
-O Virada IA pode organizar, preparar, sugerir e replanejar. Enviar mensagem externa, criar evento em calendario conectado, acionar WhatsApp, alterar dados sensiveis ou executar acao importante exige consentimento e confirmacao do usuario.
+O Virada IA organiza, explica, categoriza, lembra e prepara ações. Ele não pede senha bancária, não armazena token bancário no navegador, não movimenta dinheiro, não inicia pagamentos, não recomenda investimento específico e não executa ações externas importantes sem confirmação explícita do usuário.
