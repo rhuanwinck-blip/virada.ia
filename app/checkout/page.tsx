@@ -3,7 +3,29 @@ import { ArrowRight, BadgeCheck, CreditCard, LockKeyhole, ShieldCheck, Sparkles 
 import { AutomationFlow, HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
 import { onboardingSteps } from "@/lib/assistant-core";
 
-export default function CheckoutPage() {
+type CheckoutPageProps = {
+  searchParams?: Promise<{ plan?: string; payment?: string }>;
+};
+
+const checkoutPlans = {
+  "one-time": {
+    name: "Assessor Pessoal",
+    price: "R$ 47,00",
+    description: "Pagamento unico, central, agenda, tarefas, lembretes e primeiro dia."
+  },
+  pro: {
+    name: "Assessor Pro",
+    price: "R$ 59,90",
+    description: "Primeiro mes com WhatsApp, push, briefings, replanejamento e historico."
+  }
+} as const;
+
+export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
+  const params = await searchParams;
+  const selectedPlan = params?.plan === "pro" ? "pro" : "one-time";
+  const plan = checkoutPlans[selectedPlan];
+  const paymentState = params?.payment;
+
   return (
     <main className="result-shell command-theme">
       <div className="command-grid" />
@@ -19,26 +41,38 @@ export default function CheckoutPage() {
             </span>
             <h1>Ative seu assessor pessoal proativo.</h1>
             <p className="premium-copy">
-              O checkout preserva a infraestrutura existente. Em `DEMO_MODE=true`, o retorno aprovado simula liberacao
-              para validar onboarding e dashboard sem usar credenciais reais.
+              Pagamento processado pelo Mercado Pago com retorno seguro para liberar o onboarding e manter o historico
+              da sua jornada.
             </p>
+            {paymentState === "error" ? (
+              <div className="notice" style={{ marginBottom: 18 }}>
+                <ShieldCheck size={18} /> Nao conseguimos iniciar o pagamento agora. Confira o e-mail e tente novamente.
+              </div>
+            ) : null}
             <div className="metric-grid">
               <article className="info-card">
                 <CreditCard color="#58c7ff" size={24} />
-                <h3>Assessor Pessoal</h3>
-                <p>R$ 47,00, pagamento unico, central, agenda, tarefas, lembretes e primeiro dia.</p>
+                <h3>{checkoutPlans["one-time"].name}</h3>
+                <p>
+                  {checkoutPlans["one-time"].price}, {checkoutPlans["one-time"].description}
+                </p>
               </article>
               <article className="info-card">
                 <BadgeCheck color="#9ee8ff" size={24} />
-                <h3>Assessor Pro</h3>
-                <p>R$ 59,90 por mes, WhatsApp, push, briefings, replanejamento e historico.</p>
+                <h3>{checkoutPlans.pro.name}</h3>
+                <p>
+                  {checkoutPlans.pro.price}, {checkoutPlans.pro.description}
+                </p>
               </article>
             </div>
-            <form action="/api/checkout" method="post" style={{ marginTop: 22 }}>
-              <input type="hidden" name="plan" value="one-time" />
-              <input type="hidden" name="email" value="demo@viradaia.local" />
+            <form action="/api/checkout" className="contact-form" method="post" style={{ marginTop: 22 }}>
+              <input type="hidden" name="plan" value={selectedPlan} />
+              <label className="field">
+                <span>E-mail para receber acesso</span>
+                <input autoComplete="email" name="email" placeholder="voce@email.com" required type="email" />
+              </label>
               <button className="button" type="submit">
-                Simular pagamento aprovado <ArrowRight size={18} />
+                Pagar {plan.price} no Mercado Pago <ArrowRight size={18} />
               </button>
             </form>
           </HolographicPanel>

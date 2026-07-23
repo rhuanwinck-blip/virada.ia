@@ -79,6 +79,58 @@ export function verifyWebhookSignature(payload: string, signature: string | null
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 }
 
+function parseMercadoPagoSignature(signature: string | null) {
+  if (!signature) return null;
+
+  const parts = Object.fromEntries(
+    signature.split(",").map((part) => {
+      const [key, ...valueParts] = part.trim().split("=");
+      return [key, valueParts.join("=").trim()];
+    })
+  );
+
+  if (!parts.ts || !parts.v1) return null;
+  return { timestamp: parts.ts, hash: parts.v1 };
+}
+
+function normalizeMercadoPagoDataId(dataId: string) {
+  return /^[a-z0-9]+$/i.test(dataId) ? dataId.toLowerCase() : dataId;
+}
+
+export function createMercadoPagoWebhookManifest(input: {
+  dataId: string;
+  requestId: string;
+  timestamp: string;
+}) {
+  return `id:${normalizeMercadoPagoDataId(input.dataId)};request-id:${input.requestId};ts:${input.timestamp};`;
+}
+
+export function verifyMercadoPagoWebhookSignature(input: {
+  dataId: string | null;
+  requestId: string | null;
+  secret?: string;
+  signature: string | null;
+  toleranceSeconds?: number;
+}) {
+  const parsed = parseMercadoPagoSignature(input.signature);
+  if (!parsed || !input.secret || !input.dataId || !input.requestId) return false;
+
+  const tolerance = input.toleranceSeconds ?? 300;
+  const timestampSeconds = Number(parsed.timestamp);
+  if (!Number.isFinite(timestampSeconds)) return false;
+  if (Math.abs(Date.now() / 1000 - timestampSeconds) > tolerance) return false;
+
+  const manifest = createMercadoPagoWebhookManifest({
+    dataId: input.dataId,
+    requestId: input.requestId,
+    timestamp: parsed.timestamp
+  });
+  const expected = signPayload(manifest, input.secret);
+
+  if (expected.length !== parsed.hash.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parsed.hash));
+}
+
 export function verifyReplayProtectedSignature(input: {
   payload: string;
   signature: string | null;

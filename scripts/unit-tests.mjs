@@ -116,6 +116,35 @@ test("webhook signatures validate safely", () => {
   );
 });
 
+test("Mercado Pago webhook signatures validate safely", () => {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const manifest = securityModule.createMercadoPagoWebhookManifest({
+    dataId: "PAYABC123",
+    requestId: "request-123",
+    timestamp
+  });
+  const signature = `ts=${timestamp},v1=${securityModule.signPayload(manifest, "secret")}`;
+
+  assert.equal(
+    securityModule.verifyMercadoPagoWebhookSignature({
+      dataId: "PAYABC123",
+      requestId: "request-123",
+      secret: "secret",
+      signature
+    }),
+    true
+  );
+  assert.equal(
+    securityModule.verifyMercadoPagoWebhookSignature({
+      dataId: "PAYABC123",
+      requestId: "request-123",
+      secret: "secret",
+      signature: `ts=${timestamp},v1=bad`
+    }),
+    false
+  );
+});
+
 test("assistant navigation matches the proactive product map", () => {
   const ids = assistantCoreModule.assistantNavigation.map((item) => item.id);
   const labels = assistantCoreModule.assistantNavigation.map((item) => item.label);
