@@ -1,704 +1,933 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Banknote,
   Bell,
+  BrainCircuit,
   CalendarDays,
   Check,
   ChevronRight,
-  CircleGauge,
   Command,
   CreditCard,
-  FileText,
-  HelpCircle,
-  LayoutDashboard,
+  Gauge,
+  Inbox,
+  ListChecks,
+  LockKeyhole,
   MessageSquareText,
-  Play,
-  RotateCcw,
-  Search,
+  RefreshCcw,
+  ShieldCheck,
+  Sparkles,
   Target,
   Timer,
-  Trophy,
-  UserRound
+  Trash2,
+  UserRound,
+  WalletCards,
+  Zap
 } from "lucide-react";
 import {
-  AICompanionPreview,
-  CommandPalette,
-  ConnectedNodes,
-  FloatingMetric,
-  HabitHeatmap,
-  PillarRadar,
-  PlanTimeline,
-  ProgressCore,
-  ScannerPanel,
-  StatusPill,
-  UnlockExperience
-} from "@/components/PremiumVisuals";
-import { demoAnswers } from "@/lib/questions";
-import { loadAnswers, loadProgress, toggleProgress } from "@/lib/local-store";
-import { scoreDiagnostic } from "@/lib/scoring";
+  ActivationOverlay,
+  AgentMesh,
+  AssessorCore,
+  ConnectedAreaMap,
+  FinanceSignalGraph,
+  HolographicPanel,
+  MetricTile,
+  OpenFinanceFlow,
+  StatusPill
+} from "@/components/AssessorVisuals";
 import {
-  achievements,
-  behaviorPatterns,
-  buildEvolutionSeries,
-  buildWeeklyPlan,
-  dashboardEmptyStates,
-  dashboardNavigation,
-  financeEntries,
-  getPillarTrend,
-  goals,
-  libraryItems,
-  priorityMap,
-  routineBlocks,
-  smartRecommendations
-} from "@/lib/product-experience";
+  brl,
+  buildFinancialOverview,
+  categorizeTransaction,
+  sanitizeForFinancialAgent,
+  sandboxAccounts,
+  sandboxBills,
+  sandboxCreditCards,
+  sandboxFinancialConnections,
+  sandboxInvestments,
+  sandboxTransactions,
+  type FinancialCategory,
+  type FinancialConnection,
+  type FinancialConnectionStatus,
+  type FinancialTransaction
+} from "@/lib/financial-provider";
+import {
+  agendaTabs,
+  buildPersonalOsBriefing,
+  classifyUniversalInboxInput,
+  demoAgendaItems,
+  demoAgents,
+  demoFinancialCommitments,
+  demoHabits,
+  demoJourneyGoals,
+  demoLifeAreas,
+  demoProjects,
+  financeTabs,
+  journeyTabs,
+  personalOsAreas,
+  type AgendaItem,
+  type FinancialCommitment,
+  type PersonalOsAreaId
+} from "@/lib/personal-os";
 
-const navIcons = {
-  overview: LayoutDashboard,
-  today: Timer,
-  plan: CalendarDays,
-  assistant: MessageSquareText,
-  evolution: CircleGauge
+const areaIcons: Record<PersonalOsAreaId, typeof Command> = {
+  inicio: Gauge,
+  jornada: Target,
+  agenda: CalendarDays,
+  financas: WalletCards,
+  agentes: BrainCircuit
 };
+
+type InboxClassification = ReturnType<typeof classifyUniversalInboxInput> & { source: string };
+
+const financeValues = [22, 34, 28, 42, 38, 58, 49, 68, 61, 74, 69, 88];
 
 export function DashboardClient() {
   const searchParams = useSearchParams();
-  const [done, setDone] = useState<number[]>([]);
-  const [active, setActive] = useState("overview");
-  const [commandOpen, setCommandOpen] = useState(false);
-  const [unlockOpen, setUnlockOpen] = useState(false);
-  const [focusRunning, setFocusRunning] = useState(false);
-  const [focusMinutes, setFocusMinutes] = useState(0);
-  const [reflection, setReflection] = useState("");
+  const [activeArea, setActiveArea] = useState<PersonalOsAreaId>("inicio");
+  const [journeyTab, setJourneyTab] = useState(journeyTabs[0]);
+  const [agendaTab, setAgendaTab] = useState(agendaTabs[0]);
+  const [financeTab, setFinanceTab] = useState(financeTabs[0]);
+  const [activationOpen, setActivationOpen] = useState(false);
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>(demoAgendaItems);
+  const [commitments, setCommitments] = useState<FinancialCommitment[]>(demoFinancialCommitments);
+  const [connections, setConnections] = useState<FinancialConnection[]>(sandboxFinancialConnections);
+  const [connectionStatus, setConnectionStatus] = useState<FinancialConnectionStatus>("conectada");
+  const [connectionMessage, setConnectionMessage] = useState("Open Finance em sandbox Pluggy. Dados de exemplo marcados como sandbox.");
+  const [inboxInput, setInboxInput] = useState("Pagar o seguro sexta.");
+  const [classification, setClassification] = useState<InboxClassification | null>(null);
+  const [agentPrompt, setAgentPrompt] = useState("Quanto gastei com alimentação neste mês?");
+  const [agentAnswer, setAgentAnswer] = useState("O Agente Financeiro usa apenas dados agregados, normalizados e mascarados.");
+  const [weeklyPlanGenerated, setWeeklyPlanGenerated] = useState(false);
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<string, FinancialCategory>>({});
 
-  const result = useMemo(
-    () => scoreDiagnostic(typeof window === "undefined" ? demoAnswers : loadAnswers() ?? demoAnswers),
-    []
+  const briefing = useMemo(() => buildPersonalOsBriefing(), []);
+  const transactions = useMemo(
+    () =>
+      sandboxTransactions.map((transaction) =>
+        categoryOverrides[transaction.id] ? { ...transaction, category: categoryOverrides[transaction.id], confidence: 0.99 } : transaction
+      ),
+    [categoryOverrides]
   );
-  const todayMission = result.thirtyDayPlan.find((mission) => !done.includes(mission.day)) ?? result.thirtyDayPlan[0];
-  const weeklyPlan = buildWeeklyPlan(result);
-  const evolution = buildEvolutionSeries(result, done);
-  const activeItem = dashboardNavigation.find((item) => item.id === active) ?? dashboardNavigation[0];
-  const completedRate = Math.round((done.length / result.thirtyDayPlan.length) * 100);
+  const overview = useMemo(() => buildFinancialOverview(sandboxAccounts, transactions, sandboxBills), [transactions]);
+  const activeAreaMeta = personalOsAreas.find((area) => area.id === activeArea) ?? personalOsAreas[0];
+  const sensitiveAgentContext = useMemo(
+    () => sanitizeForFinancialAgent({ overview, accounts: sandboxAccounts, transactions }),
+    [overview, transactions]
+  );
 
   useEffect(() => {
-    setDone(loadProgress());
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get("payment") === "approved") setUnlockOpen(true);
+    if (searchParams.get("payment") === "approved") setActivationOpen(true);
   }, [searchParams]);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const commandKey = event.metaKey || event.ctrlKey;
-      if (commandKey && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setCommandOpen(true);
-      }
+  function classifyInbox() {
+    const next = classifyUniversalInboxInput(inboxInput);
+    setClassification({ ...next, source: inboxInput });
+  }
+
+  function confirmClassification() {
+    if (!classification) return;
+
+    if (classification.type === "compromisso_financeiro") {
+      const newCommitment: FinancialCommitment = {
+        id: `commit-${Date.now()}`,
+        title: sentenceCase(classification.source.replace(/[.!?]+$/g, "")),
+        dueDate: "2026-07-24",
+        amount: 318.2,
+        status: "agendado",
+        category: "servicos",
+        linkedAgendaItemId: `agenda-fin-${Date.now()}`
+      };
+      const newAgenda: AgendaItem = {
+        id: newCommitment.linkedAgendaItemId!,
+        kind: "financeiro",
+        title: newCommitment.title,
+        date: "Sexta",
+        start: "10:30",
+        end: "10:40",
+        priority: "critica",
+        durationMinutes: 10,
+        status: "agendado",
+        subtasks: ["Conferir dados", "Pagar no app do banco", "Anexar comprovante"],
+        reminders: ["Quinta 18:00", "Sexta 09:30", "Sexta 14:00 se não confirmar"]
+      };
+      setCommitments((items) => [newCommitment, ...items]);
+      setAgendaItems((items) => [newAgenda, ...items]);
+      setActiveArea("inicio");
+      setConnectionMessage("Compromisso financeiro criado, ligado na Agenda e visível no Início.");
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    if (classification.type === "meta_financeira") {
+      setActiveArea("jornada");
+      setJourneyTab("Metas");
+      setConnectionMessage("Meta financeira conectada com Sua Jornada. Nenhuma transferência foi executada.");
+    }
 
-  useEffect(() => {
-    if (!focusRunning) return;
-    const timer = window.setInterval(() => setFocusMinutes((value) => value + 1), 60000);
-    return () => window.clearInterval(timer);
-  }, [focusRunning]);
+    setClassification(null);
+    setInboxInput("");
+  }
 
-  function completeMission(day = todayMission.day) {
-    setDone(toggleProgress(day));
+  async function startBankConnection() {
+    setConnectionStatus("conectando");
+    setConnectionMessage("Criando token temporário no backend...");
+
+    const tokenResponse = await fetch("/api/finance/connect-token", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: "demo-user" })
+    }).then((response) => response.json());
+
+    setConnectionStatus("aguardando_consentimento");
+    setConnectionMessage(`Token ${tokenResponse.mode ?? "sandbox"} criado. Abrindo widget oficial do provider em modo demonstração.`);
+
+    const connectionResponse = await fetch("/api/finance/connections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        userId: "demo-user",
+        providerItemId: "pluggy-item-sandbox-new",
+        institutionId: "pluggy-sandbox-001",
+        connectToken: tokenResponse.connectToken
+      })
+    }).then((response) => response.json());
+
+    setConnections((items) => [
+      {
+        ...connectionResponse.connection,
+        status: "conectada",
+        consentStatus: "active",
+        accountName: "Conta sandbox validada",
+        accountMask: "**** 1208",
+        holderMask: "R*** W*****"
+      },
+      ...items
+    ]);
+    setConnectionStatus("conectada");
+    setConnectionMessage("Backend validou a conexão sandbox, sincronizou contas, saldos, transações, cartões, faturas e investimentos de exemplo.");
+  }
+
+  async function refreshConnection(connectionId: string) {
+    setConnectionStatus("sincronizando");
+    const result = await fetch("/api/finance/connections", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId, action: "refresh" })
+    }).then((response) => response.json());
+    setConnectionMessage(result.message);
+    setConnectionStatus("conectada");
+  }
+
+  async function revokeConnection(connectionId: string) {
+    const result = await fetch("/api/finance/connections", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId, action: "revoke" })
+    }).then((response) => response.json());
+    setConnections((items) => items.map((item) => (item.id === connectionId ? { ...item, status: "revogada", consentStatus: "revoked" } : item)));
+    setConnectionStatus("revogada");
+    setConnectionMessage(result.message);
+  }
+
+  async function removeConnectionData(connectionId: string) {
+    const result = await fetch("/api/finance/connections", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId, action: "remove_data" })
+    }).then((response) => response.json());
+    setConnections((items) => items.filter((item) => item.id !== connectionId));
+    setConnectionMessage(result.message);
+  }
+
+  function answerAgent() {
+    const query = classifyUniversalInboxInput(agentPrompt);
+    if (query.type === "consulta_financeira") {
+      setAgentAnswer(
+        `No sandbox, alimentação soma ${formatMoney(sumCategory(transactions, "alimentacao"))}. O contexto enviado ao agente remove ${sensitiveAgentContext.sensitiveFieldsRemoved.join(", ")}.`
+      );
+      setActiveArea("financas");
+      setFinanceTab("Categorias");
+      return;
+    }
+
+    setAgentAnswer(`${query.summary} Vou pedir confirmação antes de criar ou alterar algo importante.`);
   }
 
   return (
-    <main className="dashboard-shell">
-      <aside className="app-sidebar" aria-label="Navegação do produto">
+    <main className="dashboard-shell command-theme personal-os-shell">
+      <div className="command-grid" />
+      <aside className="app-sidebar personal-os-sidebar" aria-label="Navegação principal">
         <div className="sidebar-header">
           <Link className="brand" href="/">
             <span className="brand-mark">V</span> Virada IA
           </Link>
-          <span className="plan-badge">Pro demo</span>
+          <span className="plan-badge">Personal OS</span>
         </div>
-        {["Agora", "Entender", "Evoluir", "Inteligencia", "Conta"].map((group) => (
-          <div className="sidebar-group" key={group}>
-            <h3>{group === "Inteligencia" ? "Inteligência" : group}</h3>
-            {dashboardNavigation
-              .filter((item) => item.group === group)
-              .map((item) => (
-                <button
-                  className={`sidebar-item ${active === item.id ? "active" : ""}`}
-                  key={item.id}
-                  onClick={() => setActive(item.id)}
-                  type="button"
-                >
-                  <span>{item.label}</span>
-                  {active === item.id ? <ChevronRight size={15} /> : null}
-                </button>
-              ))}
-          </div>
-        ))}
+        <div className="sidebar-group">
+          <h3>Áreas principais</h3>
+          {personalOsAreas.map((area) => {
+            const Icon = areaIcons[area.id];
+            return (
+              <button className={`sidebar-item ${activeArea === area.id ? "active" : ""}`} key={area.id} onClick={() => setActiveArea(area.id)} type="button">
+                <span>
+                  <Icon size={16} /> {area.label}
+                </span>
+                {activeArea === area.id ? <ChevronRight size={15} /> : null}
+              </button>
+            );
+          })}
+        </div>
+        <HolographicPanel compact label="Estado geral">
+          <AssessorCore score={briefing.organizationScore} label="Organização" />
+        </HolographicPanel>
       </aside>
 
       <section className="dashboard-main">
         <header className="dashboard-topbar">
           <div>
-            <strong>{activeItem.label}</strong>
-            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: ".86rem" }}>{activeItem.description}</p>
+            <strong>{activeAreaMeta.label}</strong>
+            <p>{activeAreaMeta.description}</p>
           </div>
           <div className="topbar-actions">
-            <button className="command-trigger" type="button" onClick={() => setCommandOpen(true)}>
+            <button className="command-trigger" type="button" onClick={() => setActiveArea("agentes")}>
               <Command size={16} />
-              <span>Buscar ação</span>
-              <kbd>Ctrl K</kbd>
+              <span>Comando central</span>
+              <kbd>IA</kbd>
             </button>
-            <button className="icon-button" type="button" aria-label="Buscar">
-              <Search size={18} />
-            </button>
-            <button className="icon-button" type="button" aria-label="Notificações">
+            <button className="icon-button" type="button" aria-label="Notificações" onClick={() => setActiveArea("inicio")}>
               <Bell size={18} />
             </button>
-            <button className="icon-button" type="button" aria-label="Perfil">
+            <button className="icon-button" type="button" aria-label="Perfil" onClick={() => setActiveArea("jornada")}>
               <UserRound size={18} />
             </button>
           </div>
         </header>
 
-        {renderSection()}
+        {activeArea === "inicio" ? <InicioPanel /> : null}
+        {activeArea === "jornada" ? <JornadaPanel /> : null}
+        {activeArea === "agenda" ? <AgendaPanel /> : null}
+        {activeArea === "financas" ? <FinancasPanel /> : null}
+        {activeArea === "agentes" ? <AgentesPanel /> : null}
       </section>
 
       <nav className="bottom-nav" aria-label="Navegação mobile">
-        {["overview", "today", "plan", "assistant", "evolution"].map((id) => {
-          const item = dashboardNavigation.find((nav) => nav.id === id)!;
-          const Icon = navIcons[id as keyof typeof navIcons];
+        {personalOsAreas.map((area) => {
+          const Icon = areaIcons[area.id];
           return (
-            <button className={active === id ? "active" : ""} key={id} onClick={() => setActive(id)} type="button">
+            <button className={activeArea === area.id ? "active" : ""} key={area.id} onClick={() => setActiveArea(area.id)} type="button">
               <Icon size={18} />
-              {item.label.split(" ")[0]}
+              {area.label.split(" ")[0]}
             </button>
           );
         })}
       </nav>
 
-      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onSelect={setActive} />
-      <UnlockExperience open={unlockOpen} onClose={() => setUnlockOpen(false)} />
+      <ActivationOverlay open={activationOpen} onClose={() => setActivationOpen(false)} />
     </main>
   );
 
-  function renderSection() {
-    switch (active) {
-      case "overview":
-        return (
-          <div className="dashboard-section">
-            <div className="dashboard-hero">
-              <ScannerPanel className="dashboard-card" label="Visão geral">
-                <span className="eyebrow">Boa noite, Rhuan</span>
-                <h1>Seu foco continua sendo recuperar o controle da sua rotina.</h1>
-                <p className="premium-copy">
-                  O sistema prioriza {result.mainBlocker.name.toLowerCase()} porque essa área ainda segura as demais.
-                </p>
-                <div className="metric-grid">
-                  <FloatingMetric label="Concluídas" value={`${done.length}/30`} detail="Missões registradas" />
-                  <FloatingMetric label="Continuidade" value={`${completedRate}%`} detail="O plano valoriza retomada" tone="blue" />
-                </div>
-              </ScannerPanel>
-              <ScannerPanel className="mission-card" label="Missão de hoje">
-                <StatusPill>Prioridade atual</StatusPill>
-                <h2>{todayMission.title}</h2>
-                <p className="premium-copy">{todayMission.instruction}</p>
-                <div className="mission-actions">
-                  <button className="button" type="button" onClick={() => setActive("today")}>
-                    Iniciar missão <Play size={17} />
-                  </button>
-                  <button className="button secondary" type="button" onClick={() => completeMission()}>
-                    Concluir <Check size={17} />
-                  </button>
-                </div>
-              </ScannerPanel>
-            </div>
-
-            <div className="dashboard-module-grid">
-              <ScannerPanel label="Núcleo de progresso">
-                <ProgressCore score={result.viradaIndex + Math.min(8, done.length)} confidence={result.confidence} />
-              </ScannerPanel>
-              <ScannerPanel label="Mapa dos pilares">
-                <PillarRadar scores={result.pillarScores} compact />
-              </ScannerPanel>
-              <AICompanionPreview result={result} />
-            </div>
-
-            <div className="dashboard-module-grid">
-              {[
-                ["Hoje", todayMission.title],
-                ["Amanhã", result.thirtyDayPlan[todayMission.day]?.title ?? result.thirtyDayPlan[1].title],
-                ["Próximo check-in", "Revisar peso do plano e ajustar a semana"]
-              ].map(([label, value]) => (
-                <article className="info-card" key={label}>
-                  <span className="step-num">{label}</span>
-                  <h3 style={{ marginTop: 12 }}>{value}</h3>
-                </article>
-              ))}
-            </div>
-          </div>
-        );
-      case "today":
-        return (
-          <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label="Missão focada">
-              <div className="module-title">
-                <div>
-                  <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>{todayMission.title}</h1>
-                  <p>{todayMission.minutes} minutos · Pilar {todayMission.pillar}</p>
-                </div>
-                <StatusPill tone={focusRunning ? "green" : "gold"}>{focusRunning ? "Foco ativo" : "Pronto"}</StatusPill>
-              </div>
-              <p className="premium-copy">{todayMission.instruction}</p>
-              <div className="dashboard-module-grid">
-                <article className="info-card">
-                  <h3>Versão mínima</h3>
-                  <p>Se o dia estiver difícil, faça apenas 10 minutos e registre a retomada.</p>
-                </article>
-                <article className="info-card">
-                  <h3>Critério de conclusão</h3>
-                  <p>Você conclui quando a ação foi iniciada e a próxima decisão ficou clara.</p>
-                </article>
-                <article className="info-card">
-                  <h3>Motivo</h3>
-                  <p>Essa ação reduz fricção antes de exigir uma rotina maior.</p>
-                </article>
-              </div>
-              <div className="mission-actions" style={{ marginTop: 18 }}>
-                <button className="button" type="button" onClick={() => setFocusRunning((value) => !value)}>
-                  {focusRunning ? "Pausar foco" : "Iniciar modo foco"} <Timer size={17} />
-                </button>
-                <button className="button secondary" type="button" onClick={() => completeMission()}>
-                  Concluir missão <Check size={17} />
-                </button>
-                <button className="button ghost" type="button" onClick={() => setActive("replan")}>
-                  Adaptar <RotateCcw size={17} />
-                </button>
-              </div>
-            </ScannerPanel>
-            <div className="dashboard-grid">
-              <section className="panel dashboard-card">
-                <div className="module-title">
-                  <div>
-                    <h2>Reflexão curta</h2>
-                    <p>Opcional e não clínico. Serve para adaptar o plano.</p>
-                  </div>
-                  <StatusPill tone="blue">{focusMinutes} min focados</StatusPill>
-                </div>
-                <div className="contact-form">
-                  <div className="field">
-                    <label htmlFor="reflection">O que dificultou hoje?</label>
-                    <textarea id="reflection" value={reflection} onChange={(event) => setReflection(event.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="difficulty">Dificuldade percebida</label>
-                    <select id="difficulty">
-                      <option>Leve</option>
-                      <option>Média</option>
-                      <option>Alta</option>
-                    </select>
-                  </div>
-                </div>
-              </section>
-              <aside className="panel dashboard-card">
-                <h2>Impacto ao concluir</h2>
-                <p className="premium-copy">
-                  A conclusão atualiza a continuidade, libera reflexão curta e recalibra a próxima ação.
-                </p>
-                <HabitHeatmap completed={done} />
-              </aside>
-            </div>
-          </div>
-        );
-      case "plan":
-      case "calendar":
-        return (
-          <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label={active === "plan" ? "Meu plano" : "Calendário"}>
-              <div className="module-title">
-                <div>
-                  <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>Plano de 30 dias adaptável.</h1>
-                  <p>Quatro semanas, missões, versões mínimas, marcos, bloqueios e check-ins.</p>
-                </div>
-                <StatusPill>{done.length} dias concluídos</StatusPill>
-              </div>
-              <PlanTimeline missions={result.thirtyDayPlan} />
-            </ScannerPanel>
-            <div className="cards-grid">
-              {weeklyPlan.map((week) => (
-                <article className="info-card" key={week.week}>
-                  <span className="step-num">Semana {week.week}</span>
-                  <h3 style={{ marginTop: 12 }}>{week.theme}</h3>
-                  <p>{week.objective}</p>
-                  <div className="progress-track">
-                    <span style={{ width: `${Math.min(100, week.missions.filter((mission) => done.includes(mission.day)).length * 14)}%` }} />
-                  </div>
-                </article>
-              ))}
-            </div>
-            <section className="panel dashboard-card">
-              <div className="day-grid">
-                {result.thirtyDayPlan.map((mission) => (
-                  <button className={`day-cell ${done.includes(mission.day) ? "done" : ""}`} key={mission.day} onClick={() => completeMission(mission.day)} type="button">
-                    <strong style={{ color: "var(--text)" }}>Dia {mission.day}</strong>
-                    <br />
-                    {mission.title}
-                    <br />
-                    <span style={{ color: "var(--muted)" }}>{mission.minutes} min</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
-        );
-      case "diagnostic":
-      case "pillars":
-        return (
-          <div className="dashboard-section">
-            <div className="dashboard-hero">
-              <ScannerPanel className="dashboard-card" label="Mapa do seu momento">
-                <ProgressCore score={result.viradaIndex} confidence={result.confidence} trend="linha base" />
-                <h2 style={{ marginTop: 18 }}>Principal bloqueio: {result.mainBlocker.name}</h2>
-                <p className="premium-copy">{result.pattern}</p>
-                <div className="notice">Limitação: análise educacional baseada nas respostas fornecidas, sem diagnóstico médico.</div>
-              </ScannerPanel>
-              <ScannerPanel label="Radar dos pilares">
-                <PillarRadar scores={result.pillarScores} />
-              </ScannerPanel>
-            </div>
-            <div className="cards-grid">
-              {result.pillarScores.map((pillar) => {
-                const trend = getPillarTrend(pillar.key, pillar.score);
-                return (
-                  <article className="info-card" key={pillar.key}>
-                    <StatusPill tone={trend.trend >= 0 ? "green" : "red"}>{trend.trend >= 0 ? `+${trend.trend}` : trend.trend}</StatusPill>
-                    <h3 style={{ marginTop: 12 }}>{pillar.name}</h3>
-                    <p>{pillar.description}</p>
-                    <div className="pillar-score">
-                      <span style={{ width: `${pillar.score}%`, background: pillar.color }} />
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        );
-      case "patterns":
-      case "priorities":
-        return (
-          <div className="dashboard-section">
-            <ScannerPanel className="dashboard-card" label={active === "patterns" ? "Padrões identificados" : "Mapa de prioridades"}>
-              <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-                {active === "patterns" ? "Entenda o padrão antes de repetir o ciclo." : "Ordem clara para decidir o que vem primeiro."}
-              </h1>
-              <p className="premium-copy">
-                Cada item mostra evidência, impacto e ação recomendada. Nada aqui é depoimento ou dado real de terceiros.
-              </p>
-            </ScannerPanel>
-            {active === "patterns" ? (
-              <ConnectedNodes items={behaviorPatterns.map((pattern) => ({ title: pattern.title, detail: `${pattern.evidence} Ação: ${pattern.action}` }))} />
-            ) : (
-              <div className="comparison-grid">
-                {priorityMap.map((zone) => (
-                  <article className="info-card" key={zone.zone}>
-                    <StatusPill tone={zone.tone === "green" ? "green" : zone.tone === "blue" ? "blue" : "gold"}>{zone.zone}</StatusPill>
-                    <ul className="check-list" style={{ marginTop: 14 }}>
-                      {zone.items.map((item) => (
-                        <li key={item}>
-                          <Target size={16} color="#5cffb0" /> {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      case "goals":
-      case "routine":
-      case "habits":
-      case "focus":
-      case "finance":
-      case "checkins":
-      case "evolution":
-        return renderEvolutionArea(active);
-      case "assistant":
-      case "recommendations":
-      case "replan":
-      case "simulations":
-        return renderIntelligenceArea(active);
-      case "reports":
-      case "achievements":
-      case "library":
-      case "notifications":
-      case "subscription":
-      case "settings":
-      case "help":
-        return renderAccountArea(active);
-      default:
-        return null;
-    }
-  }
-
-  function renderEvolutionArea(id: string) {
-    const titles: Record<string, string> = {
-      goals: "Metas transformadas em próximos passos.",
-      routine: "Rotina simples, flexível e compatível com sua realidade.",
-      habits: "Hábitos acompanhados sem gamificação infantil.",
-      focus: "Sessões de foco curtas e rastreáveis.",
-      finance: "Organização financeira educacional e manual.",
-      checkins: "Check-in semanal para adaptar sem apagar histórico.",
-      evolution: "Evolução visual com dados reais quando existirem."
-    };
-
+  function InicioPanel() {
     return (
       <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>{titles[id]}</h1>
-          <p className="premium-copy">Cada área tem função prática e estado demo explícito enquanto não há backend persistente.</p>
-        </ScannerPanel>
+        <div className="dashboard-hero">
+          <HolographicPanel className="dashboard-card" label="Central de comando">
+            <span className="eyebrow">
+              <Sparkles size={15} /> {formatToday()}
+            </span>
+            <h1>{briefing.greeting} Sua vida está conectada.</h1>
+            <p className="premium-copy">
+              {briefing.summary} {briefing.recommendation}
+            </p>
+            <div className="metric-grid">
+              <MetricTile label="Saldo consolidado" value={formatMoney(overview.consolidatedBalance.amount)} detail="Sandbox Pluggy marcado" />
+              <MetricTile label="Gasto do mês" value={formatMoney(overview.outcomeThisMonth.amount)} detail="Extrato unificado" tone="blue" />
+              <MetricTile label="Contas próximas" value={`${commitments.filter((item) => item.status !== "pago").length}`} detail="Agenda financeira" tone="amber" />
+              <MetricTile label="Projetos ativos" value={`${demoProjects.length}`} detail="Ligados a metas" tone="cyan" />
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Núcleo central">
+            <AssessorCore score={briefing.organizationScore} label="Sistema vivo" />
+            <div className="stack-list">
+              {overview.alerts.map((alert) => (
+                <div className="stack-item" key={alert}>
+                  <strong>Oportunidade detectada</strong>
+                  <span>{alert}</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+        </div>
 
-        {id === "goals" ? (
-          <div className="cards-grid">
-            {goals.map((goal) => (
-              <article className="info-card" key={goal.title}>
-                <StatusPill tone={goal.status === "Prioridade" ? "green" : "blue"}>{goal.status}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{goal.title}</h3>
-                <p>{goal.why}</p>
-                <div className="pillar-score"><span style={{ width: `${goal.progress}%` }} /></div>
-                <p><strong>Próximo passo:</strong> {goal.nextStep}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+        <div className="dashboard-module-grid">
+          <HolographicPanel label="Timeline inteligente">
+            <TimelineList items={agendaItems.slice(0, 5)} />
+          </HolographicPanel>
+          <HolographicPanel label="Tudo conectado">
+            <ConnectedAreaMap areas={personalOsAreas} />
+          </HolographicPanel>
+          <HolographicPanel label="Financeiro no Início">
+            <FinanceSignalGraph values={financeValues} />
+            <div className="stack-list">
+              <div className="stack-item">
+                <strong>Fatura próxima</strong>
+                <span>{formatMoney(overview.nextBill?.amount.amount ?? 0)} vence em {overview.nextBill?.dueDate}</span>
+              </div>
+              <div className="stack-item">
+                <strong>Última movimentação</strong>
+                <span>{transactions[0].normalizedDescription} · {formatMoney(transactions[0].amount.amount)}</span>
+              </div>
+            </div>
+          </HolographicPanel>
+        </div>
+      </div>
+    );
+  }
 
-        {id === "routine" ? (
-          <div className="cards-grid">
-            {routineBlocks.map((block) => (
-              <article className="info-card" key={block.title}>
-                <StatusPill tone="gold">{block.period}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{block.title}</h3>
-                <p>{block.duration} · {block.flexibility}</p>
-                <p>Versão mínima: {block.minimal}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "habits" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <HabitHeatmap completed={done} />
-            </section>
-            <aside className="panel dashboard-card">
-              <h2>Sequência e retomada</h2>
-              <p className="premium-copy">{done.length} registros concluídos. Melhor período: 4 dias. Dificuldade atual: média.</p>
-            </aside>
-          </div>
-        ) : null}
-
-        {id === "focus" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <h2>Sessão rápida</h2>
-              <p className="premium-copy">Intenção: avançar na ação principal sem notificações.</p>
-              <button className="button" type="button" onClick={() => setFocusRunning((value) => !value)}>
-                {focusRunning ? "Pausar sessão" : "Iniciar 20 minutos"} <Timer size={17} />
+  function JornadaPanel() {
+    return (
+      <div className="dashboard-section">
+        <AreaTabs tabs={journeyTabs} active={journeyTab} onSelect={setJourneyTab} />
+        <div className="dashboard-hero">
+          <HolographicPanel className="dashboard-card" label={`Sua Jornada · ${journeyTab}`}>
+            <h1>Objetivos viram metas, metas viram ações, ações entram na agenda.</h1>
+            <p className="premium-copy">
+              {weeklyPlanGenerated
+                ? "Plano semanal gerado com blocos protegidos e vínculo financeiro para a meta do carro."
+                : "A Jornada usa agenda e finanças autorizadas para sugerir prioridades sem tomar decisões por você."}
+            </p>
+            <div className="inline-actions">
+              <button className="button" type="button" onClick={() => setWeeklyPlanGenerated(true)}>
+                Gerar plano semanal <ListChecks size={17} />
               </button>
-            </section>
-            <aside className="panel dashboard-card">
-              <FloatingMetric label="Tempo focado" value={`${focusMinutes} min`} detail="Histórico local desta sessão" />
-            </aside>
-          </div>
-        ) : null}
-
-        {id === "finance" ? (
-          <div className="cards-grid">
-            {financeEntries.map((entry) => (
-              <article className="info-card" key={entry.category}>
-                <CreditCard color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{entry.category}</h3>
-                <p>{entry.value} · {entry.signal}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "checkins" ? (
-          <section className="panel dashboard-card">
-            <div className="contact-form">
-              {["Quantas ações concluiu?", "O que ficou difícil?", "O plano ficou pesado?", "O que deve ser reduzido?"].map((question) => (
-                <div className="field" key={question}>
-                  <label>{question}</label>
-                  <input placeholder="Resposta curta" />
+              <button className="button secondary" type="button" onClick={() => setJourneyTab("Revisão semanal")}>
+                Abrir revisão <RefreshCcw size={17} />
+              </button>
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Áreas da vida">
+            <div className="life-area-grid">
+              {demoLifeAreas.map((area) => (
+                <article className="life-area" key={area.id}>
+                  <strong>{area.score}%</strong>
+                  <span>{area.label}</span>
+                  <small>{area.signal}</small>
+                </article>
+              ))}
+            </div>
+          </HolographicPanel>
+        </div>
+        <div className="cards-grid">
+          {demoJourneyGoals.map((goal) => (
+            <article className="info-card" key={goal.id}>
+              <StatusPill tone={goal.area === "Financeiro" ? "amber" : "cyan"}>{goal.area}</StatusPill>
+              <h3>{goal.title}</h3>
+              <p>{goal.target}</p>
+              <div className="progress-track" aria-label={`Progresso ${goal.progress}%`}>
+                <span style={{ width: `${goal.progress}%` }} />
+              </div>
+              <p>Ação de hoje: {goal.nextAction}</p>
+              {goal.financialLink ? <small>Conectado à meta financeira e ao saldo sandbox.</small> : null}
+            </article>
+          ))}
+        </div>
+        <div className="dashboard-module-grid">
+          <HolographicPanel label="Hábitos e rotinas">
+            <div className="stack-list">
+              {demoHabits.map((habit) => (
+                <div className="stack-item" key={habit.id}>
+                  <strong>{habit.title}</strong>
+                  <span>{habit.streak} dias · {habit.target} · {habit.today}</span>
                 </div>
               ))}
-              <button className="button" type="button">Enviar check-in <Check size={17} /></button>
             </div>
-          </section>
-        ) : null}
+          </HolographicPanel>
+          <HolographicPanel label="Marcos e conquistas">
+            <div className="stack-list">
+              {["Primeira semana com briefing diário", "Meta do carro ligada ao orçamento", "Follow-up do fornecedor rastreado"].map((item) => (
+                <div className="stack-item done" key={item}>
+                  <strong>{item}</strong>
+                  <span>Registrado no histórico</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Relatório">
+            <FinanceSignalGraph values={[18, 28, 24, 35, 42, 47, 61]} />
+          </HolographicPanel>
+        </div>
+      </div>
+    );
+  }
 
-        {id === "evolution" ? (
-          <div className="dashboard-grid">
-            <section className="panel dashboard-card">
-              <div className="module-title">
+  function AgendaPanel() {
+    return (
+      <div className="dashboard-section">
+        <AreaTabs tabs={agendaTabs} active={agendaTab} onSelect={setAgendaTab} />
+        <div className="dashboard-hero">
+          <HolographicPanel className="dashboard-card" label={`Agenda · ${agendaTab}`}>
+            <h1>Dia, semana, mês, tarefas, projetos, rotinas e finanças no mesmo mapa.</h1>
+            <p className="premium-copy">
+              A agenda cria lembretes financeiros, acompanha follow-ups e sugere versão reduzida quando o dia estoura.
+            </p>
+            <UniversalInbox />
+          </HolographicPanel>
+          <HolographicPanel label="Modo foco">
+            <div className="focus-shield">
+              <Timer size={28} />
+              <h3>Próximo bloco: orçamento do cliente</h3>
+              <p>40 minutos, 3 subtarefas e lembrete depois para confirmar conclusão.</p>
+              <button className="button secondary" type="button" onClick={() => setAgendaTab("Modo foco")}>
+                Abrir foco
+              </button>
+            </div>
+          </HolographicPanel>
+        </div>
+        <div className="dashboard-module-grid">
+          <HolographicPanel label="Timeline do dia">
+            <TimelineList items={agendaItems} />
+          </HolographicPanel>
+          <HolographicPanel label="Projetos na agenda">
+            <div className="stack-list">
+              {demoProjects.map((project) => (
+                <div className="stack-item" key={project.id}>
+                  <strong>{project.title}</strong>
+                  <span>{project.nextStep} · risco: {project.risk}</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Lembretes em camadas">
+            <div className="stack-list">
+              {agendaItems.flatMap((item) => item.reminders.slice(0, 2).map((reminder) => `${item.title}: ${reminder}`)).slice(0, 6).map((reminder) => (
+                <div className="stack-item" key={reminder}>
+                  <strong>Lembrete</strong>
+                  <span>{reminder}</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+        </div>
+      </div>
+    );
+  }
+
+  function FinancasPanel() {
+    return (
+      <div className="dashboard-section">
+        <AreaTabs tabs={financeTabs} active={financeTab} onSelect={setFinanceTab} />
+        <div className="dashboard-hero">
+          <HolographicPanel className="dashboard-card" label={`Finanças · ${financeTab}`}>
+            <span className="eyebrow">
+              <ShieldCheck size={15} /> Open Finance somente leitura
+            </span>
+            <h1>Extrato unificado, faturas, contas, metas e agente financeiro.</h1>
+            <p className="premium-copy">
+              Quando não houver credencial real, tudo aparece como sandbox. O Virada IA nunca pede senha bancária, não guarda token no navegador e não movimenta dinheiro.
+            </p>
+            <div className="metric-grid">
+              <MetricTile label="Saldo" value={formatMoney(overview.consolidatedBalance.amount)} detail={`${overview.connectedInstitutions} instituições sandbox`} />
+              <MetricTile label="Entradas" value={formatMoney(overview.incomeThisMonth.amount)} detail="Período atual" tone="cyan" />
+              <MetricTile label="Saídas" value={formatMoney(overview.outcomeThisMonth.amount)} detail="Categorias corrigíveis" tone="blue" />
+              <MetricTile label="Economia" value={formatMoney(overview.savingsThisMonth.amount)} detail="Estimativa sandbox" tone="amber" />
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Conexão bancária">
+            <OpenFinanceFlow activeStep={connectionStatus === "conectada" ? 5 : connectionStatus === "aguardando_consentimento" ? 2 : 1} />
+            <p className="premium-copy">{connectionMessage}</p>
+            <button className="button" type="button" onClick={startBankConnection}>
+              Conectar conta bancária <Banknote size={17} />
+            </button>
+          </HolographicPanel>
+        </div>
+        <FinanceTabContent />
+      </div>
+    );
+  }
+
+  function FinanceTabContent() {
+    if (financeTab === "Extrato") {
+      return (
+        <HolographicPanel label="Extrato unificado">
+          <UnifiedStatement transactions={transactions} />
+        </HolographicPanel>
+      );
+    }
+
+    if (financeTab === "Conexões") {
+      return (
+        <HolographicPanel label="Conexões Open Finance">
+          <div className="connection-list">
+            {connections.map((connection) => (
+              <article className="connection-card" key={connection.id}>
                 <div>
-                  <h2>Índice ao longo do tempo</h2>
-                  <p>Demonstração até haver histórico real.</p>
+                  <StatusPill tone={connection.status === "conectada" ? "cyan" : connection.status === "revogada" ? "red" : "amber"}>
+                    {connection.status.replaceAll("_", " ")}
+                  </StatusPill>
+                  <h3>{connection.institutionName}</h3>
+                  <p>{connection.accountName} · {connection.accountType} · {connection.accountMask} · {connection.holderMask}</p>
+                  <small>
+                    Produtos: {connection.products.join(", ")} · última sync: {formatDateTime(connection.lastSyncAt)} · consentimento até {formatDate(connection.consentExpiresAt)}
+                  </small>
                 </div>
-                <StatusPill tone="blue">Exemplo</StatusPill>
+                <div className="connection-actions">
+                  <button className="button secondary" type="button" onClick={() => refreshConnection(connection.id)}>
+                    Atualizar <RefreshCcw size={16} />
+                  </button>
+                  <button className="button secondary" type="button" onClick={() => refreshConnection(connection.id)}>
+                    Reconectar <Zap size={16} />
+                  </button>
+                  <button className="button ghost" type="button" onClick={() => revokeConnection(connection.id)}>
+                    Revogar <LockKeyhole size={16} />
+                  </button>
+                  <button className="button ghost" type="button" onClick={() => removeConnectionData(connection.id)}>
+                    Remover dados <Trash2 size={16} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </HolographicPanel>
+      );
+    }
+
+    if (financeTab === "Categorias") {
+      return (
+        <div className="dashboard-module-grid">
+          <HolographicPanel label="Distribuição por categoria">
+            <div className="stack-list">
+              {overview.categoryDistribution.map((item) => (
+                <div className="stack-item" key={item.category}>
+                  <strong>{item.category.replaceAll("_", " ")}</strong>
+                  <span>{formatMoney(item.amount.amount)} · {item.percent}%</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Correção de categoria">
+            <UnifiedStatement transactions={transactions.slice(0, 4)} compact />
+          </HolographicPanel>
+          <HolographicPanel label="Regra inteligente">
+            <p className="premium-copy">
+              Regras determinísticas vêm primeiro, histórico do usuário depois e IA apenas como fallback. Valor, data, conta e identificador original nunca são alterados.
+            </p>
+          </HolographicPanel>
+        </div>
+      );
+    }
+
+    if (financeTab === "Cartões" || financeTab === "Faturas") {
+      return (
+        <div className="cards-grid">
+          {sandboxCreditCards.map((card) => (
+            <article className="info-card" key={card.id}>
+              <CreditCard size={22} />
+              <h3>{card.name} · final {card.finalDigits}</h3>
+              <p>Limite {formatMoney(card.limit.amount)} · disponível {formatMoney(card.availableLimit.amount)} · uso {card.utilization}%</p>
+              <p>Fecha dia {card.closingDay}, vence dia {card.dueDay}. Alerta informativo, sem pagamento automático.</p>
+            </article>
+          ))}
+          {sandboxBills.map((bill) => (
+            <article className="info-card" key={bill.id}>
+              <StatusPill tone="amber">{bill.status}</StatusPill>
+              <h3>Fatura {formatDate(bill.dueDate)}</h3>
+              <p>Atual {formatMoney(bill.amount.amount)} · projetada {formatMoney(bill.projectedAmount.amount)} · confiança {Math.round(bill.confidence * 100)}%</p>
+            </article>
+          ))}
+        </div>
+      );
+    }
+
+    if (financeTab === "Assinaturas") {
+      return (
+        <div className="cards-grid">
+          {overview.subscriptions.map((subscription) => (
+            <article className="info-card" key={subscription.id}>
+              <StatusPill tone={subscription.status === "confirmada" ? "cyan" : "amber"}>{subscription.status}</StatusPill>
+              <h3>{subscription.service}</h3>
+              <p>{formatMoney(subscription.amount.amount)} · {subscription.frequency} · próxima cobrança {formatDate(subscription.nextChargeDate)}</p>
+              <small>O sistema informa e lembra; não cancela assinaturas automaticamente.</small>
+            </article>
+          ))}
+        </div>
+      );
+    }
+
+    if (financeTab === "Investimentos") {
+      return (
+        <div className="cards-grid">
+          {sandboxInvestments.map((investment) => (
+            <article className="info-card" key={investment.id}>
+              <StatusPill>{investment.type}</StatusPill>
+              <h3>{investment.product}</h3>
+              <p>{investment.institutionName} · saldo {formatMoney(investment.balance.amount)} · aplicado {formatMoney(investment.investedAmount.amount)}</p>
+              <small>Sem recomendação específica e sem compra/venda.</small>
+            </article>
+          ))}
+        </div>
+      );
+    }
+
+    if (financeTab.includes("Contas") || financeTab === "Compromissos" || financeTab === "Orçamento" || financeTab === "Metas financeiras") {
+      return (
+        <div className="dashboard-module-grid">
+          <HolographicPanel label="Compromissos financeiros">
+            <div className="stack-list">
+              {commitments.map((commitment) => (
+                <div className="stack-item" key={commitment.id}>
+                  <strong>{commitment.title}</strong>
+                  <span>{formatMoney(commitment.amount)} · vence {formatDate(commitment.dueDate)} · {commitment.status}</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Meta financeira">
+            <h3>Comprar um carro</h3>
+            <p className="premium-copy">R$ 6.800 de R$ 20.000 acumulados. Ligada à Jornada e ao aporte mensal de R$ 700.</p>
+            <div className="progress-track">
+              <span style={{ width: "34%" }} />
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Orçamento">
+            <div className="stack-list">
+              {overview.categoryDistribution.slice(0, 4).map((item) => (
+                <div className="stack-item" key={item.category}>
+                  <strong>{item.category.replaceAll("_", " ")}</strong>
+                  <span>{item.percent}% do gasto sandbox no período</span>
+                </div>
+              ))}
+            </div>
+          </HolographicPanel>
+        </div>
+      );
+    }
+
+    return (
+      <div className="dashboard-module-grid">
+        <HolographicPanel label="Fluxo de caixa">
+          <FinanceSignalGraph values={financeValues} />
+        </HolographicPanel>
+        <HolographicPanel label="Contas conectadas">
+          <div className="stack-list">
+            {sandboxAccounts.map((account) => (
+              <div className="stack-item" key={account.id}>
+                <strong>{account.institutionName}</strong>
+                <span>{account.name} · {account.numberMask} · {formatMoney(account.balance.amount)}</span>
               </div>
-              <div className="plan-timeline">
-                {evolution.map((value, index) => (
-                  <article className="timeline-day" key={index}>
-                    <span>Marco {index + 1}</span>
-                    <strong>{value}/100</strong>
-                    <small>Índice estimado</small>
-                  </article>
+            ))}
+          </div>
+        </HolographicPanel>
+        <HolographicPanel label="Insights financeiros">
+          <div className="stack-list">
+            {overview.alerts.map((alert) => (
+              <div className="stack-item" key={alert}>
+                <strong>Insight</strong>
+                <span>{alert}</span>
+              </div>
+            ))}
+          </div>
+        </HolographicPanel>
+      </div>
+    );
+  }
+
+  function AgentesPanel() {
+    return (
+      <div className="dashboard-section">
+        <div className="dashboard-hero">
+          <HolographicPanel className="dashboard-card" label="Central de agentes">
+            <h1>Seis agentes especializados, uma memória controlada e permissões explícitas.</h1>
+            <p className="premium-copy">
+              Agentes usam a mesma base de contexto, mas só acessam dados autorizados. Ações importantes viram rascunho e exigem confirmação.
+            </p>
+            <div className="assessor-composer">
+              <textarea value={agentPrompt} onChange={(event) => setAgentPrompt(event.target.value)} aria-label="Mensagem para agentes" />
+              <div className="composer-actions">
+                <button className="button" type="button" onClick={answerAgent}>
+                  Perguntar ao agente <MessageSquareText size={17} />
+                </button>
+              </div>
+            </div>
+            <div className="chat-message assistant">
+              <small>Agente</small>
+              <p>{agentAnswer}</p>
+            </div>
+          </HolographicPanel>
+          <HolographicPanel label="Malha viva">
+            <AgentMesh agents={demoAgents} />
+          </HolographicPanel>
+        </div>
+        <div className="cards-grid">
+          {demoAgents.map((agent) => (
+            <article className="info-card" key={agent.id}>
+              <StatusPill tone={agent.id === "agent-finance" ? "amber" : "cyan"}>{agent.label}</StatusPill>
+              <h3>{agent.role}</h3>
+              <p>{agent.currentSuggestion}</p>
+              <small>Pode: {agent.can.join(", ")}.</small>
+              <small> Não pode: {agent.cannot.join(", ")}.</small>
+            </article>
+          ))}
+        </div>
+        <HolographicPanel label="Regras do agente financeiro">
+          <div className="agent-rules">
+            {[
+              "Não movimenta dinheiro.",
+              "Não acessa senha, CPF, conta completa, cartão completo ou token.",
+              "Não recomenda investimento específico.",
+              "Não altera valor, data, instituição, conta ou identificador original.",
+              "Usa dados agregados, normalizados, mascarados e minimizados."
+            ].map((rule) => (
+              <span key={rule}>
+                <ShieldCheck size={15} /> {rule}
+              </span>
+            ))}
+          </div>
+        </HolographicPanel>
+      </div>
+    );
+  }
+
+  function UniversalInbox() {
+    return (
+      <div className="universal-inbox">
+        <div className="field">
+          <label htmlFor="universal-inbox">Caixa de entrada universal</label>
+          <textarea id="universal-inbox" value={inboxInput} onChange={(event) => setInboxInput(event.target.value)} />
+        </div>
+        <div className="inline-actions">
+          <button className="button secondary" type="button" onClick={classifyInbox}>
+            Classificar <Inbox size={17} />
+          </button>
+          {classification ? (
+            <button className="button" type="button" onClick={confirmClassification}>
+              Confirmar ação <Check size={17} />
+            </button>
+          ) : null}
+        </div>
+        {classification ? (
+          <div className="draft-card">
+            <StatusPill tone={classification.requiresConfirmation ? "amber" : "cyan"}>{classification.type}</StatusPill>
+            <h3>{classification.targetArea}</h3>
+            <p>{classification.summary}</p>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function UnifiedStatement({ transactions: rows, compact = false }: { transactions: FinancialTransaction[]; compact?: boolean }) {
+    return (
+      <div className={`finance-table ${compact ? "compact" : ""}`}>
+        {rows.map((transaction) => {
+          const categorization = categorizeTransaction({
+            description: transaction.originalDescription,
+            amount: transaction.amount.amount,
+            previousUserCategory: categoryOverrides[transaction.id]
+          });
+          return (
+            <article className="finance-row" key={transaction.id}>
+              <div>
+                <strong>{transaction.normalizedDescription}</strong>
+                <span>
+                  {transaction.originalDescription} · {transaction.institutionName} · {formatDate(transaction.date)} · {transaction.status}
+                </span>
+              </div>
+              <b className={transaction.type}>{formatMoney(transaction.amount.amount)}</b>
+              <select
+                aria-label={`Categoria de ${transaction.normalizedDescription}`}
+                value={transaction.category}
+                onChange={(event) => setCategoryOverrides((items) => ({ ...items, [transaction.id]: event.target.value as FinancialCategory }))}
+              >
+                {[
+                  "alimentacao",
+                  "mercado",
+                  "transporte",
+                  "moradia",
+                  "saude",
+                  "educacao",
+                  "lazer",
+                  "compras",
+                  "servicos",
+                  "assinaturas",
+                  "investimentos",
+                  "salario",
+                  "vendas",
+                  "outros_gastos"
+                ].map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
-              </div>
-            </section>
-            <aside className="panel dashboard-card">
-              <HabitHeatmap completed={done} />
-            </aside>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  function renderIntelligenceArea(id: string) {
-    return (
-      <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-            {id === "assistant" && "Guia Virada com contexto do seu plano."}
-            {id === "recommendations" && "Recomendações com motivo, evidência e impacto."}
-            {id === "replan" && "Replaneje sem apagar o que aconteceu."}
-            {id === "simulations" && "Simule cenários antes de mudar o plano."}
-          </h1>
-          <p className="premium-copy">A IA não prescreve, não faz diagnóstico médico e não inventa dados fora do seu histórico.</p>
-        </ScannerPanel>
-
-        {id === "assistant" ? <AICompanionPreview result={result} /> : null}
-
-        {id === "recommendations" ? (
-          <div className="cards-grid">
-            {smartRecommendations.map((item) => (
-              <article className="info-card" key={item.title}>
-                <StatusPill>{item.impact} impacto</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{item.title}</h3>
-                <p>{item.reason}</p>
-                <p><strong>Evidência:</strong> {item.evidence}</p>
-                <div className="mission-actions">
-                  <button className="button secondary" type="button">Aceitar</button>
-                  <button className="button ghost" type="button">Adaptar</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {id === "replan" ? (
-          <div className="comparison-grid">
-            <article className="info-card">
-              <StatusPill tone="gold">Antes</StatusPill>
-              <h3 style={{ marginTop: 12 }}>Missão de 30 minutos</h3>
-              <p>Exigia energia alta e dependia de horário ideal.</p>
+              </select>
+              <small>{Math.round(categorization.confidence * 100)}% · dado bruto preservado</small>
             </article>
-            <article className="info-card">
-              <StatusPill>Depois</StatusPill>
-              <h3 style={{ marginTop: 12 }}>Missão de 12 minutos</h3>
-              <p>Reduzida para caber no dia real, mantendo o mesmo objetivo.</p>
-            </article>
-          </div>
-        ) : null}
-
-        {id === "simulations" ? (
-          <div className="cards-grid">
-            {["Se eu tiver só 10 minutos", "Se eu falhar três dias", "Se minha rotina mudar"].map((scenario) => (
-              <article className="info-card" key={scenario}>
-                <h3>{scenario}</h3>
-                <p>A simulação reduz o plano, preserva histórico e sugere uma próxima ação possível.</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+          );
+        })}
       </div>
     );
   }
+}
 
-  function renderAccountArea(id: string) {
-    return (
-      <div className="dashboard-section">
-        <ScannerPanel className="dashboard-card" label={activeItem.label}>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
-            {id === "reports" && "Relatórios com data, versão, confiança e limitações."}
-            {id === "achievements" && "Conquistas discretas, sem ruído infantil."}
-            {id === "library" && "Biblioteca prática filtrada pelo diagnóstico."}
-            {id === "notifications" && "Alertas úteis, consentidos e controláveis."}
-            {id === "subscription" && "Assinatura, pagamentos e cancelamento simples."}
-            {id === "settings" && "Preferências, privacidade e dados."}
-            {id === "help" && "Ajuda clara sobre produto, limites e suporte."}
-          </h1>
-          <p className="premium-copy">A área preserva transparência, segurança e controle do usuário.</p>
-        </ScannerPanel>
+function AreaTabs({ tabs, active, onSelect }: { tabs: string[]; active: string; onSelect: (tab: string) => void }) {
+  return (
+    <div className="area-tabs" role="tablist">
+      {tabs.map((tab) => (
+        <button className={active === tab ? "active" : ""} key={tab} onClick={() => onSelect(tab)} type="button">
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-        {id === "reports" ? (
-          <div className="cards-grid">
-            {["Relatório inicial", "Relatório semanal", "Relatório mensal"].map((report, index) => (
-              <article className="info-card" key={report}>
-                <FileText color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{report}</h3>
-                <p>{index === 0 ? "Pronto em modo demo com PDF." : "Será gerado quando houver histórico real."}</p>
-              </article>
-            ))}
+function TimelineList({ items }: { items: AgendaItem[] }) {
+  return (
+    <div className="timeline-list">
+      {items.map((item) => (
+        <article className={`timeline-list__item ${item.kind}`} key={item.id}>
+          <time>{item.start ?? item.date}</time>
+          <span className="timeline-dot" />
+          <div>
+            <StatusPill tone={item.priority === "critica" ? "red" : item.kind === "financeiro" ? "amber" : "cyan"}>{item.kind}</StatusPill>
+            <h3>{item.title}</h3>
+            <p>
+              {item.date}
+              {item.end ? ` · ${item.start}-${item.end}` : ""} · {item.durationMinutes} min · {item.status}
+            </p>
+            <small>{item.subtasks.slice(0, 2).join(" · ")}</small>
           </div>
-        ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
 
-        {id === "achievements" ? (
-          <div className="cards-grid">
-            {achievements.map((achievement) => (
-              <article className="info-card" key={achievement.title}>
-                <Trophy color={achievement.unlocked ? "#d4ba74" : "#69758a"} size={22} />
-                <h3 style={{ marginTop: 12 }}>{achievement.title}</h3>
-                <p>{achievement.detail}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+function formatMoney(value: number) {
+  return brl(value).amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
-        {id === "library" ? (
-          <div className="cards-grid">
-            {libraryItems.map((item) => (
-              <article className="info-card" key={item.title}>
-                <StatusPill tone="blue">{item.pillar}</StatusPill>
-                <h3 style={{ marginTop: 12 }}>{item.title}</h3>
-                <p>{item.minutes} minutos de leitura prática.</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
+function formatDate(value: string) {
+  const date = value.includes("T") ? new Date(value) : new Date(`${value}T12:00:00`);
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
-        {["notifications", "subscription", "settings", "help"].includes(id) ? (
-          <div className="cards-grid">
-            {dashboardEmptyStates.map((state) => (
-              <article className="info-card" key={state.state}>
-                <HelpCircle color="#5cffb0" size={22} />
-                <h3 style={{ marginTop: 12 }}>{state.title}</h3>
-                <p>{state.body}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatToday() {
+  return new Date().toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
+}
+
+function sumCategory(transactions: FinancialTransaction[], category: FinancialCategory) {
+  return Math.abs(
+    transactions
+      .filter((transaction) => transaction.category === category && transaction.type === "saida")
+      .reduce((sum, transaction) => sum + transaction.amount.amount, 0)
+  );
+}
+
+function sentenceCase(value: string) {
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }

@@ -1,19 +1,21 @@
 import { expect, test } from "@playwright/test";
 
-test("complete free diagnostic flow", async ({ page }) => {
+test("navigate the Personal OS and connect Open Finance sandbox", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /descobrir meu ponto de virada/i }).first().click();
+  await expect(page.getByRole("heading", { name: /sua vida inteira/i }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /conhecer meu sistema pessoal/i }).first()).toBeVisible();
+  await page.getByRole("link", { name: /abrir demo/i }).click();
 
-  for (let index = 0; index < 18; index += 1) {
-    await page.getByRole("button", { name: /4\s+Muito/i }).click();
-    await page.getByRole("button", { name: "Avançar", exact: true }).click();
-  }
+  await expect(page.getByRole("heading", { name: /sua vida está conectada/i })).toBeVisible();
+  await page.getByRole("button", { name: /finan/i }).first().click();
+  await expect(page.getByRole("heading", { name: /extrato unificado/i })).toBeVisible();
+  await page.getByRole("button", { name: /conectar conta banc/i }).click();
+  await expect(page.getByText(/backend validou|sincronizou/i)).toBeVisible();
 
-  await page.getByRole("button", { name: /Tenho direção/i }).click();
-  await page.getByRole("button", { name: "Avançar", exact: true }).click();
+  await page.getByRole("button", { name: /extrato/i }).click();
+  await expect(page.getByText(/dado bruto preservado/i).first()).toBeVisible();
 
-  await page.getByRole("textbox", { name: "Nome", exact: true }).fill("Demo Virada");
-  await page.getByRole("textbox", { name: "E-mail", exact: true }).fill("demo@viradaia.local");
-  await page.getByRole("button", { name: /ver resultado gratuito/i }).click();
-  await expect(page.getByText(/resultado gratuito/i).first()).toBeVisible();
+  await page.getByRole("button", { name: /agenda/i }).first().click();
+  await page.getByRole("button", { name: /classificar/i }).click();
+  await expect(page.getByText(/finanças \+ agenda \+ início/i)).toBeVisible();
 });

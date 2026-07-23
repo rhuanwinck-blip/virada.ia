@@ -2,54 +2,77 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, AlertTriangle, BarChart3, FlaskConical, Save, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { ScannerPanel, StatusPill } from "@/components/PremiumVisuals";
+import { Activity, AlertTriangle, BellRing, CalendarClock, FlaskConical, Save, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
+import { HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
 import { adminMetrics, defaultAdminConfig } from "@/lib/admin-config";
-import { questions } from "@/lib/questions";
-import { adminSections } from "@/lib/product-experience";
+import { assistantNavigation, integrations } from "@/lib/assistant-core";
+import type { ProductionReadinessReport } from "@/lib/production-readiness";
 
-export function AdminPanel() {
-  const [active, setActive] = useState("Visão geral");
+const adminSections = [
+  "Visao geral",
+  "Usuarios",
+  "Agenda",
+  "Tarefas",
+  "Projetos",
+  "Rotinas",
+  "Inbox",
+  "IA e prompts",
+  "Memoria",
+  "Notificacoes",
+  "Google Calendar",
+  "WhatsApp",
+  "Web Push",
+  "Pagamentos",
+  "Assinaturas",
+  "Consentimentos",
+  "Auditoria",
+  "Erros",
+  "Feature flags",
+  "Configuracoes"
+];
+
+export function AdminPanel({ readiness }: { readiness?: ProductionReadinessReport }) {
+  const [active, setActive] = useState("Visao geral");
 
   return (
-    <main className="admin-shell">
-      <div className="grid-background" />
+    <main className="admin-shell command-theme">
+      <div className="command-grid" />
       <div className="container">
         <Link className="brand" href="/">
           <span className="brand-mark">V</span> Virada IA Admin
         </Link>
 
         <section className="dashboard-hero" style={{ marginTop: 28 }}>
-          <ScannerPanel className="dashboard-card" label="Ambiente protegido">
+          <HolographicPanel className="dashboard-card" label="Ambiente protegido">
             <span className="eyebrow">
-              <ShieldCheck size={16} /> Admin separado do produto
+              <ShieldCheck size={16} /> Operacao do assessor
             </span>
-            <h1 style={{ marginTop: 18, fontSize: "clamp(2.2rem, 6vw, 5rem)" }}>Centro de controle da Virada IA.</h1>
+            <h1>Centro operacional do assessor pessoal.</h1>
             <p className="premium-copy">
-              Controle funil, perguntas, scoring, prompts, biblioteca, preços, feature flags, auditoria e erros sem
-              afetar a experiência do usuário final.
+              Admin separado do usuario final para monitorar filas, integrações, consentimentos, pagamento, prompts, erros e
+              auditoria sem misturar dados sensiveis.
             </p>
             <div className="metric-grid">
-              <StatusCard label="Perguntas ativas" value={`${questions.length}`} detail="versionadas por scoring" />
-              <StatusCard label="Flags" value={`${Object.keys(defaultAdminConfig.featureFlags).length}`} detail="testes e releases" />
+              <StatusCard label="Areas do produto" value={`${assistantNavigation.length}`} detail="sem abas vazias" />
+              <StatusCard label="Integracoes" value={`${integrations.length}`} detail="demo, prontas ou com credenciais pendentes" />
             </div>
-          </ScannerPanel>
+          </HolographicPanel>
 
-          <ScannerPanel label="Saúde operacional">
+          <HolographicPanel label="Saude operacional">
             <div className="bar-list">
               {[
-                ["APIs", "Operando"],
-                ["Pagamentos", "Demo seguro"],
-                ["Relatórios", "Fila pronta"],
-                ["Analytics", "Sem PII"]
+                ["Readiness", readiness ? `${readiness.score}%` : "Nao carregado"],
+                ["Bloqueios", readiness ? `${readiness.blockers.length}` : "Ver API"],
+                ["Checkout", "Preservado"],
+                ["Webhooks", "Assinatura validada"]
               ].map(([label, value]) => (
                 <div className="bar-label" key={label}>
                   <span>{label}</span>
-                  <strong style={{ color: "var(--green)" }}>{value}</strong>
+                  <strong>{value}</strong>
                 </div>
               ))}
             </div>
-          </ScannerPanel>
+          </HolographicPanel>
         </section>
 
         <section className="section" style={{ paddingBottom: 0 }}>
@@ -57,7 +80,7 @@ export function AdminPanel() {
             {adminMetrics.map(([label, value, delta]) => (
               <article className="info-card" key={label}>
                 <p style={{ margin: 0, color: "var(--muted)" }}>{label}</p>
-                <h3 style={{ marginTop: 8, fontSize: "1.7rem" }}>{value}</h3>
+                <h3>{value}</h3>
                 <StatusPill>{delta}</StatusPill>
               </article>
             ))}
@@ -69,22 +92,22 @@ export function AdminPanel() {
             <aside className="panel dashboard-card">
               <div className="module-title">
                 <div>
-                  <h2>Áreas administrativas</h2>
-                  <p>Todos os módulos têm finalidade operacional.</p>
+                  <h2>Modulos administrativos</h2>
+                  <p>Todos existem para operacao, governanca ou configuracao.</p>
                 </div>
               </div>
               <div className="bar-list">
                 {adminSections.map((section) => (
                   <button className={`sidebar-item ${active === section ? "active" : ""}`} key={section} onClick={() => setActive(section)} type="button">
-                    {section}
+                    <span>{section}</span>
                   </button>
                 ))}
               </div>
             </aside>
 
-            <ScannerPanel className="dashboard-card" label={active}>
-              {renderAdminModule(active)}
-            </ScannerPanel>
+            <HolographicPanel className="dashboard-card" label={active}>
+              {renderAdminModule(active, readiness)}
+            </HolographicPanel>
           </div>
         </section>
       </div>
@@ -96,20 +119,34 @@ function StatusCard({ label, value, detail }: { label: string; value: string; de
   return (
     <article className="info-card">
       <p style={{ margin: 0, color: "var(--muted)" }}>{label}</p>
-      <h3 style={{ marginTop: 8, fontSize: "1.7rem" }}>{value}</h3>
+      <h3>{value}</h3>
       <p>{detail}</p>
     </article>
   );
 }
 
-function renderAdminModule(active: string) {
-  if (active === "Visão geral") {
+function renderAdminModule(active: string, readiness?: ProductionReadinessReport) {
+  if (active === "Visao geral") {
     return (
       <>
-        <h2>Funil e qualidade do produto</h2>
-        <p className="premium-copy">Acompanhe conversão sem urgência falsa e sem dados pessoais em eventos de analytics.</p>
+        <h2>Funil do assessor</h2>
+        <p className="premium-copy">Acompanhe visita, checkout, ativacao, onboarding, primeiro comando, primeira confirmacao e retencao.</p>
+        {readiness ? (
+          <div className="cards-grid" style={{ marginTop: 18 }}>
+            <article className="info-card">
+              <h3>{readiness.ready ? "Pronto para producao" : "Ainda nao esta 100%"}</h3>
+              <p>Readiness atual: {readiness.score}%. Bloqueios: {readiness.blockers.length}.</p>
+            </article>
+            {readiness.blockers.slice(0, 2).map((blocker) => (
+              <article className="info-card" key={blocker.id}>
+                <h3>{blocker.label}</h3>
+                <p>{blocker.detail}</p>
+              </article>
+            ))}
+          </div>
+        ) : null}
         <div className="data-flow" style={{ marginTop: 18 }}>
-          {["Visita", "Diagnóstico", "Lead", "Resultado", "Checkout", "Plano"].map((step, index) => (
+          {["Visita", "Checkout", "Ativacao", "Onboarding", "Comando", "Confirmacao"].map((step, index) => (
             <div className="data-flow__item" key={step}>
               <div className="data-flow__node">{index + 1}</div>
               <span>{step}</span>
@@ -120,47 +157,43 @@ function renderAdminModule(active: string) {
     );
   }
 
-  if (["Preços", "Planos", "Feature flags", "Testes A/B"].includes(active)) {
+  if (["IA e prompts", "Feature flags", "Configuracoes"].includes(active)) {
     return (
       <>
-        <h2>Configurações editáveis</h2>
-        <p className="premium-copy">Mudanças devem gerar versão, auditoria e rollout controlado.</p>
+        <h2>Configuracoes editaveis</h2>
+        <p className="premium-copy">Mudancas sensiveis devem gerar versao, request id, autor e diffs de auditoria.</p>
         <div className="contact-form" style={{ marginTop: 18 }}>
-          {Object.entries(defaultAdminConfig.prices).map(([key, value]) => (
-            <div className="field" key={key}>
-              <label htmlFor={key}>Preço: {key}</label>
-              <input id={key} defaultValue={value} />
-            </div>
-          ))}
           <div className="field">
-            <label htmlFor="hero">Título do hero</label>
-            <input id="hero" defaultValue={defaultAdminConfig.copy.heroTitle} />
+            <label htmlFor="confirmations">Politica de confirmacao</label>
+            <input id="confirmations" defaultValue="Acoes externas importantes sempre exigem confirmacao" />
+          </div>
+          <div className="field">
+            <label htmlFor="hero">Titulo do hero</label>
+            <input id="hero" defaultValue="Um assessor pessoal. Sempre atento ao seu dia." />
+          </div>
+          <div className="field">
+            <label htmlFor="demo">Demo mode</label>
+            <input id="demo" defaultValue={String(defaultAdminConfig.featureFlags.demoMode)} />
           </div>
           <button className="button" type="button">
-            Salvar versão <Save size={18} />
+            Salvar versao <Save size={18} />
           </button>
         </div>
       </>
     );
   }
 
-  if (["Perguntas", "Scoring", "Prompts", "Recomendações"].includes(active)) {
+  if (["Google Calendar", "WhatsApp", "Web Push", "Notificacoes"].includes(active)) {
     return (
       <>
-        <h2>Inteligência auditável</h2>
-        <p className="premium-copy">
-          {questions.length} perguntas ativas. Cada publicação deve gerar nova versão de scoring, prompts e log de auditoria.
-        </p>
+        <h2>Canais e consentimento</h2>
+        <p className="premium-copy">Configure canais sem disparar mensagens reais ate que o usuario autorize.</p>
         <div className="cards-grid" style={{ marginTop: 18 }}>
-          {[
-            ["Mappings", "Pilares, pesos e perguntas"],
-            ["Contradições", "Regras que reduzem confiança"],
-            ["Prompts", "Limites de IA e resposta estruturada"]
-          ].map(([title, body]) => (
-            <article className="info-card" key={title}>
-              <SlidersHorizontal color="#5cffb0" size={22} />
-              <h3 style={{ marginTop: 12 }}>{title}</h3>
-              <p>{body}</p>
+          {integrations.map((integration) => (
+            <article className="info-card" key={integration.id}>
+              <Zap color="#58c7ff" size={22} />
+              <h3>{integration.label}</h3>
+              <p>{integration.description}</p>
             </article>
           ))}
         </div>
@@ -168,26 +201,26 @@ function renderAdminModule(active: string) {
     );
   }
 
-  if (["Erros", "Auditoria", "Configurações"].includes(active)) {
+  if (["Erros", "Auditoria", "Consentimentos"].includes(active)) {
     return (
       <>
-        <h2>Governança e segurança</h2>
-        <p className="premium-copy">Logs, request IDs, status de integrações e permissões administrativas.</p>
+        <h2>Governanca</h2>
+        <p className="premium-copy">Logs, consentimentos, envios, alteracoes de memoria, integrações e permissoes administrativas.</p>
         <div className="cards-grid" style={{ marginTop: 18 }}>
           <article className="info-card">
-            <AlertTriangle color="#ff6470" size={22} />
-            <h3 style={{ marginTop: 12 }}>Erros críticos</h3>
-            <p>Nenhum erro crítico em modo demo.</p>
+            <AlertTriangle color="#ff6f91" size={22} />
+            <h3>Erros criticos</h3>
+            <p>Nenhum erro critico em modo demo.</p>
           </article>
           <article className="info-card">
-            <Activity color="#5cffb0" size={22} />
-            <h3 style={{ marginTop: 12 }}>Auditoria</h3>
-            <p>Alterações sensíveis devem salvar antes/depois e request id.</p>
+            <Activity color="#58c7ff" size={22} />
+            <h3>Auditoria</h3>
+            <p>Alteracoes sensiveis salvam antes/depois e request id.</p>
           </article>
           <article className="info-card">
-            <FlaskConical color="#558cff" size={22} />
-            <h3 style={{ marginTop: 12 }}>Experimentos</h3>
-            <p>Testes A/B sem manipulação ou urgência falsa.</p>
+            <FlaskConical color="#9ee8ff" size={22} />
+            <h3>Experimentos</h3>
+            <p>Testes sem urgencia falsa e sem manipular consentimento.</p>
           </article>
         </div>
       </>
@@ -197,18 +230,22 @@ function renderAdminModule(active: string) {
   return (
     <>
       <h2>{active}</h2>
-      <p className="premium-copy">
-        Módulo preparado para operação: filtros, visão de status, exportação e edição controlada entram aqui sem misturar
-        visual do admin com a experiência do usuário.
-      </p>
+      <p className="premium-copy">Modulo funcional para status, filtros, fila, edicao segura e exportacao controlada.</p>
       <div className="cards-grid" style={{ marginTop: 18 }}>
-        {["Status", "Fila", "Ação segura"].map((item) => (
-          <article className="info-card" key={item}>
-            <BarChart3 color="#5cffb0" size={22} />
-            <h3 style={{ marginTop: 12 }}>{item}</h3>
-            <p>Estado funcional de demonstração, pronto para conectar ao backend real.</p>
-          </article>
-        ))}
+        {[
+          [CalendarClock, "Status", "Visao operacional com itens ativos e pendentes."],
+          [BellRing, "Fila", "Acoes aguardando confirmacao, envio ou credencial."],
+          [SlidersHorizontal, "Acao segura", "Edicao gera auditoria antes de afetar usuarios."]
+        ].map(([Icon, title, body]) => {
+          const TypedIcon = Icon as typeof CalendarClock;
+          return (
+            <article className="info-card" key={String(title)}>
+              <TypedIcon color="#58c7ff" size={22} />
+              <h3>{String(title)}</h3>
+              <p>{String(body)}</p>
+            </article>
+          );
+        })}
       </div>
     </>
   );

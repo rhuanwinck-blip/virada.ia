@@ -1,25 +1,28 @@
 # Virada IA
 
-Sistema brasileiro de evolução pessoal orientado por inteligência artificial.
+Sistema operacional pessoal com inteligencia artificial.
 
-Promessa: **você não precisa mudar tudo. Precisa descobrir o que mudar primeiro.**
+Promessa: **Sua vida inteira. Organizada por uma inteligencia que trabalha com voce.**
 
-## O que está implementado
+## O Que Esta Implementado
 
-- Landing page premium com hero imersivo, narrativa de scroll, radar, scanner, fluxo de dados, demonstração e CTA final.
-- Questionário inteligente com captura de contato, consentimento separado e leitura visual em tempo real.
-- Motor determinístico de scoring, confiança, contradições, bloqueios e plano de 30 dias.
-- Resultado gratuito reconstruído com mapa de pilares, evidências, limitações, prévia bloqueada e oferta transparente.
-- Checkout em modo demonstração e wrapper preparado para Mercado Pago.
-- Experiência de pagamento aprovado com overlay premium de desbloqueio.
-- Dashboard completo com sidebar, command palette, navegação mobile, missão de hoje, plano, diagnóstico, pilares, padrões, prioridades, metas, rotina, hábitos, foco, finanças educacionais, check-ins, evolução, IA, recomendações, replanejamento, relatórios, conquistas, biblioteca, assinatura, configurações e ajuda.
-- Painel admin redesenhado com módulos para funil, usuários, diagnósticos, conteúdo, perguntas, scoring, prompts, recomendações, preços, planos, feature flags, testes A/B, erros e auditoria.
-- API routes para score, checkout, webhook, relatório PDF, health, exportação e exclusão.
-- Supabase schema inicial e migration incremental para as novas áreas do produto, com RLS e índices.
-- React Email/Resend, PostHog, Sentry, OpenAI, Mercado Pago e n8n preservados por contrato.
-- Estados de loading/erro premium, reduced motion, testes unitários, Playwright e CI GitHub Actions.
+- Landing page longa, futurista azul, com hero imersivo, comando por voz, storytelling sticky, Inicio, Jornada, Agenda, Financas, Open Finance, Agentes, Lembretes, Briefing, Replanejamento, Memoria, Seguranca, Planos, FAQ e CTA final.
+- Dashboard reconstruido com as cinco areas principais: **Inicio**, **Sua Jornada**, **Agenda**, **Financas** e **Agentes de IA**.
+- Inicio como central de comando com briefing, prioridades, compromissos, tarefas, contas proximas, saldo consolidado, ultimas movimentacoes, metas, projetos e acoes sugeridas.
+- Sua Jornada com areas da vida, objetivos, metas, plano semanal, habitos, rotinas, marcos, conquistas, revisao semanal e relatorios.
+- Agenda com hoje, calendario, compromissos, tarefas, projetos, rotinas, lembretes, follow-ups, caixa de entrada universal e modo foco.
+- Financas com visao geral, extrato unificado, contas, cartoes, faturas, categorias, orcamento, assinaturas, compromissos, contas a pagar/receber, metas financeiras, investimentos, relatorios e conexoes.
+- Open Finance read-only com interface `FinancialDataProvider`, provider inicial `PluggyFinancialDataProvider`, `BelvoFinancialDataProvider` preparado e sandbox claro.
+- Fluxo funcional de conexao bancaria sandbox via backend: token temporario, conexao, validacao, refresh, revogacao e remocao de dados.
+- Sync financeiro backend em `/api/finance/sync`, cron Vercel diario, persistencia Supabase opcional e readiness de producao em `/api/readiness`.
+- Pluggy em modo producao com endpoints server-side para item/status, contas, transacoes, cartoes derivados, faturas derivadas, investimentos e revogacao do item.
+- Categorizacao financeira em camadas: regra deterministica, correcao do usuario e fallback de IA previsto.
+- Agente financeiro com dados agregados, mascarados e minimizados; sem CPF, senha, token, conta completa ou cartao completo.
+- Onboarding pos-cadastro/pagamento com objetivos, rotina, Google Calendar, notificacoes, WhatsApp opcional, Open Finance opcional, contas manuais, primeira meta e briefing.
+- PWA, Web Push, Google Calendar, WhatsApp Cloud API e e-mail preservados/preparados.
+- Pagamentos, checkout, webhook Mercado Pago, LGPD, APIs existentes e infraestrutura preservados.
 
-## Rodar localmente
+## Rodar Localmente
 
 ```bash
 pnpm install
@@ -28,7 +31,7 @@ pnpm dev
 
 Abra `http://localhost:3000`.
 
-## Validação
+## Validacao
 
 ```bash
 pnpm lint
@@ -36,32 +39,68 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm test:e2e
-pnpm validate
+pnpm db:migrate
+pnpm db:types
+pnpm setup:check
 ```
 
-## Variáveis
+## Variaveis
 
-Copie `.env.example` para `.env.local` e preencha apenas o que for usar. Com `DEMO_MODE=true`, o app funciona sem credenciais reais.
+Com `DEMO_MODE=true` e `OPEN_FINANCE_SANDBOX=true`, o app funciona sem credenciais reais e marca os dados como sandbox.
 
-## Onde alterar
+Principais variaveis:
 
-- Landing e storytelling: `components/PremiumLanding.tsx`
-- Dashboard: `components/DashboardClient.tsx`
-- Componentes visuais: `components/PremiumVisuals.tsx`
-- Modelo de experiência: `lib/product-experience.ts`
-- Preços e perguntas: `lib/questions.ts`
-- Scoring: `lib/scoring.ts`
-- Prompt/IA: `lib/ai-report.ts`
-- Pagamentos: `lib/payments.ts` e `app/api/payments/webhook/route.ts`
-- Analytics: `lib/events.ts`
-- Banco: `supabase/migrations/001_initial_schema.sql` e `supabase/migrations/002_product_evolution_schema.sql`
-- Admin: `components/AdminPanel.tsx`
+- `FINANCIAL_DATA_PROVIDER=pluggy`
+- `OPEN_FINANCE_SANDBOX=true`
+- `PLUGGY_CLIENT_ID`
+- `PLUGGY_CLIENT_SECRET`
+- `PLUGGY_WEBHOOK_SECRET`
+- `BELVO_SECRET_ID`
+- `BELVO_SECRET_PASSWORD`
+- `BELVO_WEBHOOK_SECRET`
+- `FINANCIAL_DATA_ENCRYPTION_KEY`
+- `OPEN_FINANCE_SYSTEM_USER_ID`
+- `OPENAI_API_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SECRET_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_WEBHOOK_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WEB_PUSH_PUBLIC_KEY`
+- `WEB_PUSH_PRIVATE_KEY`
 
-## Documentação do redesign
+Nunca envie `.env` real ao GitHub.
 
-- `docs/redesign-audit.md`
-- `docs/extraordinary-redesign.md`
+## Arquitetura Principal
 
-## Aviso importante
+- Landing: `components/AssessorLanding.tsx`
+- Dashboard Personal OS: `components/DashboardClient.tsx`
+- Visuais holograficos: `components/AssessorVisuals.tsx`
+- Produto Personal OS: `lib/personal-os.ts`
+- Open Finance/provider: `lib/financial-provider.ts`
+- Parser do assessor: `lib/assistant-core.ts`
+- Seguranca: `lib/security.ts`
+- Onboarding: `components/OnboardingClient.tsx`
+- Finance APIs: `app/api/finance/*`
+- Sync/readiness: `app/api/finance/sync/route.ts`, `app/api/readiness/route.ts`, `lib/financial-sync.ts`, `lib/financial-store.ts`, `lib/production-readiness.ts`
+- Checkout: `app/checkout/page.tsx` e `app/api/checkout/route.ts`
+- Pagamentos/webhook: `lib/payments.ts` e `app/api/payments/webhook/route.ts`
+- Banco: `supabase/migrations/001_initial_schema.sql` a `005_financial_sync_operations.sql`
 
-O Virada IA oferece uma análise educacional baseada nas informações fornecidas pelo usuário. Não realiza diagnóstico médico ou psicológico e não substitui profissionais de saúde, psicologia, finanças, contabilidade ou outras áreas especializadas.
+## Documentacao
+
+- `docs/personal-os-open-finance-audit.md`
+- `docs/personal-os-open-finance-redesign.md`
+- `docs/proactive-assessor-redesign.md`
+- `docs/security.md`
+- `docs/database.md`
+- `docs/production-go-live.md`
+
+## Limites De Seguranca
+
+O Virada IA organiza, explica, categoriza, lembra e prepara acoes. Ele nao pede senha bancaria, nao armazena token bancario no navegador, nao movimenta dinheiro, nao inicia pagamentos, nao recomenda investimento especifico e nao executa acoes externas importantes sem confirmacao explicita do usuario.

@@ -25,5 +25,5 @@ export async function POST(request: Request) {
     return NextResponse.json(session);
   }
 
-  return NextResponse.redirect(new URL("/dashboard?payment=approved", request.url), 303);
+  return NextResponse.redirect(new URL("/onboarding?payment=approved", request.url), 303);
 }

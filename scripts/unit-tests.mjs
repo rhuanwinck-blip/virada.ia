@@ -1,21 +1,30 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import ts from "typescript";
 
 const root = process.cwd();
 const cache = new Map();
 
 function resolveTs(id, parentFile) {
-  if (id.startsWith("@/")) return path.join(root, `${id.slice(2)}.ts`);
-  if (id.startsWith(".")) return path.resolve(path.dirname(parentFile), `${id}.ts`);
+  if (id.startsWith("@/")) return resolveLocal(path.join(root, id.slice(2)));
+  if (id.startsWith(".")) return resolveLocal(path.resolve(path.dirname(parentFile), id));
   return null;
+}
+
+function resolveLocal(basePath) {
+  if (existsSync(basePath)) return basePath;
+  if (existsSync(`${basePath}.ts`)) return `${basePath}.ts`;
+  if (existsSync(`${basePath}.tsx`)) return `${basePath}.tsx`;
+  if (existsSync(`${basePath}.json`)) return `${basePath}.json`;
+  return `${basePath}.ts`;
 }
 
 function loadTs(file) {
   const normalized = path.normalize(file);
   if (cache.has(normalized)) return cache.get(normalized).exports;
+  if (normalized.endsWith(".json")) return createRequire(normalized)(normalized);
 
   const source = readFileSync(normalized, "utf8");
   const localModule = { exports: {} };
@@ -41,20 +50,28 @@ function loadTs(file) {
   return localModule.exports;
 }
 
+const pendingTests = [];
+
 function test(name, fn) {
-  try {
-    fn();
-    console.log(`✓ ${name}`);
-  } catch (error) {
-    console.error(`✗ ${name}`);
-    throw error;
-  }
+  pendingTests.push(
+    Promise.resolve()
+      .then(fn)
+      .then(() => console.log(`✓ ${name}`))
+      .catch((error) => {
+        console.error(`✗ ${name}`);
+        throw error;
+      })
+  );
 }
 
 const questionsModule = loadTs(path.join(root, "lib/questions.ts"));
 const scoringModule = loadTs(path.join(root, "lib/scoring.ts"));
 const securityModule = loadTs(path.join(root, "lib/security.ts"));
-const productExperienceModule = loadTs(path.join(root, "lib/product-experience.ts"));
+const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
+const financialProviderModule = loadTs(path.join(root, "lib/financial-provider.ts"));
+const financialSyncModule = loadTs(path.join(root, "lib/financial-sync.ts"));
+const personalOsModule = loadTs(path.join(root, "lib/personal-os.ts"));
+const productionReadinessModule = loadTs(path.join(root, "lib/production-readiness.ts"));
 
 test("scoreDiagnostic is deterministic", () => {
   const first = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
@@ -88,19 +105,199 @@ test("webhook signatures validate safely", () => {
   const signature = securityModule.signPayload(payload, "secret");
   assert.equal(securityModule.verifyWebhookSignature(payload, signature, "secret"), true);
   assert.equal(securityModule.verifyWebhookSignature(payload, "bad", "secret"), false);
+  assert.equal(
+    securityModule.verifyReplayProtectedSignature({
+      payload,
+      signature,
+      secret: "secret",
+      timestamp: String(Math.floor(Date.now() / 1000))
+    }),
+    true
+  );
 });
 
-test("dashboard navigation has no empty or duplicate sections", () => {
-  const ids = productExperienceModule.dashboardNavigation.map((item) => item.id);
+test("assistant navigation matches the proactive product map", () => {
+  const ids = assistantCoreModule.assistantNavigation.map((item) => item.id);
+  const labels = assistantCoreModule.assistantNavigation.map((item) => item.label);
   assert.equal(new Set(ids).size, ids.length);
-  assert.ok(productExperienceModule.dashboardNavigation.length >= 26);
-  assert.ok(productExperienceModule.dashboardNavigation.every((item) => item.label && item.description && item.group));
+  assert.equal(assistantCoreModule.assistantNavigation.length, 15);
+  assert.deepEqual(labels, [
+    "Central",
+    "Meu Dia",
+    "Assessor IA",
+    "Agenda",
+    "Tarefas",
+    "Projetos",
+    "Rotinas",
+    "Caixa de Entrada",
+    "Foco",
+    "Follow-ups",
+    "Memoria",
+    "Notificacoes",
+    "Integracoes",
+    "Assinatura",
+    "Configuracoes"
+  ]);
+  assert.ok(assistantCoreModule.assistantNavigation.every((item) => item.label && item.description && item.group));
 });
 
-test("weekly plan covers all 30 missions", () => {
-  const result = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
-  const weeks = productExperienceModule.buildWeeklyPlan(result);
-  const missionCount = weeks.reduce((sum, week) => sum + week.missions.length, 0);
-  assert.equal(weeks.length, 4);
-  assert.equal(missionCount, 30);
+test("assistant parser turns natural Portuguese into safe draft actions", () => {
+  const event = assistantCoreModule.parseAssistantIntent("Amanha as 14h tenho dentista.");
+  assert.equal(event.type, "event");
+  assert.equal(event.dateLabel, "Amanha");
+  assert.equal(event.timeLabel, "14:00");
+  assert.equal(event.needsConfirmation, true);
+
+  const reminder = assistantCoreModule.parseAssistantIntent("Me lembra de ligar para o Joao sexta.");
+  assert.equal(reminder.type, "reminder");
+  assert.equal(reminder.dateLabel, "Sexta");
+  assert.ok(reminder.missing.includes("horario"));
+
+  const routine = assistantCoreModule.parseAssistantIntent("Toda segunda preciso conferir as vendas.");
+  assert.equal(routine.type, "routine");
+  assert.equal(routine.dateLabel, "Segunda");
+
+  const financialQuery = assistantCoreModule.parseAssistantIntent("Quanto gastei com alimentacao neste mes?");
+  assert.equal(financialQuery.type, "financial_query");
+  assert.equal(financialQuery.needsConfirmation, true);
+
+  const financialGoal = assistantCoreModule.parseAssistantIntent("Quero juntar R$ 20.000 para comprar um carro.");
+  assert.equal(financialGoal.type, "financial_goal");
+  assert.equal(financialGoal.missing.includes("valor-alvo"), false);
+
+  const financialCommitment = assistantCoreModule.parseAssistantIntent("Preciso pagar o seguro ate sexta.");
+  assert.equal(financialCommitment.type, "financial_commitment");
+  assert.equal(financialCommitment.priority, "critica");
 });
+
+test("assistant day planning detects organization signals", () => {
+  const score = assistantCoreModule.buildDayOrganizationScore(assistantCoreModule.demoTasks, assistantCoreModule.demoEvents);
+  const briefing = assistantCoreModule.buildMorningBriefing();
+  const windows = assistantCoreModule.findFreeWindows(assistantCoreModule.demoEvents);
+  assert.ok(score >= 0 && score <= 100);
+  assert.ok(briefing.greeting.includes("Bom dia"));
+  assert.ok(Array.isArray(windows));
+});
+
+test("personal OS exposes exactly five connected main areas", () => {
+  const ids = personalOsModule.personalOsAreas.map((area) => area.id);
+  assert.deepEqual(ids, ["inicio", "jornada", "agenda", "financas", "agentes"]);
+  assert.equal(personalOsModule.journeyTabs.length, 12);
+  assert.equal(personalOsModule.agendaTabs.length, 10);
+  assert.equal(personalOsModule.financeTabs.length, 15);
+
+  const briefing = personalOsModule.buildPersonalOsBriefing();
+  assert.ok(briefing.summary.includes("fatura"));
+  assert.ok(briefing.nextCommitment);
+
+  const classified = personalOsModule.classifyUniversalInboxInput("Pagar o seguro sexta.");
+  assert.equal(classified.type, "compromisso_financeiro");
+  assert.equal(classified.requiresConfirmation, true);
+});
+
+test("financial provider abstraction exposes required Open Finance methods", () => {
+  const provider = new financialProviderModule.PluggyFinancialDataProvider();
+  const methods = [
+    "createConnectToken",
+    "createConnection",
+    "getConnectionStatus",
+    "listConnections",
+    "listInstitutions",
+    "listAccounts",
+    "listBalances",
+    "listTransactions",
+    "listCreditCards",
+    "listBills",
+    "listInvestments",
+    "refreshConnection",
+    "revokeConnection",
+    "handleWebhook"
+  ];
+  assert.ok(methods.every((method) => typeof provider[method] === "function"));
+
+  const belvo = new financialProviderModule.BelvoFinancialDataProvider();
+  assert.equal(belvo.name, "belvo");
+});
+
+test("financial sync runs in read-only sandbox without persistence credentials", async () => {
+  const result = await financialSyncModule.runFinancialSync({
+    userId: "demo-user",
+    kind: "manual"
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.readOnly, true);
+  assert.equal(result.sandbox, true);
+  assert.ok(result.stats.transactions >= 1);
+  assert.equal(result.persistence.persisted, false);
+});
+
+test("financial cron sync scans safely in sandbox", async () => {
+  const result = await financialSyncModule.runFinancialCronSync();
+  assert.equal(result.ok, true);
+  assert.equal(result.readOnly, true);
+  assert.ok(result.users >= 1);
+  assert.ok(result.results.every((item) => item.readOnly));
+});
+
+test("production readiness exposes blockers before real go-live", () => {
+  const report = productionReadinessModule.buildProductionReadinessReport();
+  assert.equal(report.ready, false);
+  assert.ok(report.blockers.some((item) => item.id === "app-env"));
+  assert.ok(report.blockers.some((item) => item.id === "legal-review"));
+  assert.ok(report.checks.some((item) => item.id === "next-safe"));
+});
+
+test("Pluggy sandbox returns masked read-only financial data", async () => {
+  const provider = new financialProviderModule.PluggyFinancialDataProvider();
+  const token = await provider.createConnectToken({ userId: "demo-user" });
+  assert.equal(token.provider, "pluggy");
+  assert.equal(token.sandbox, true);
+  assert.ok(token.connectToken.includes("sandbox"));
+
+  const accounts = await provider.listAccounts();
+  const transactions = await provider.listTransactions();
+  const cards = await provider.listCreditCards();
+  const bills = await provider.listBills();
+  const investments = await provider.listInvestments();
+
+  assert.ok(accounts.every((account) => account.numberMask.startsWith("****")));
+  assert.ok(transactions.every((transaction) => transaction.rawPreserved));
+  assert.ok(cards.every((card) => card.finalDigits.length === 4));
+  assert.ok(bills.length > 0);
+  assert.ok(investments.every((investment) => investment.sandbox));
+});
+
+test("financial categorization preserves raw fields and asks confirmation on low confidence", () => {
+  const market = financialProviderModule.categorizeTransaction({
+    description: "MERCADO SOL NASCENTE",
+    amount: -286.74
+  });
+  assert.equal(market.category, "mercado");
+  assert.equal(market.requiresConfirmation, false);
+
+  const unknown = financialProviderModule.categorizeTransaction({
+    description: "PAGAMENTO XYZ DESCONHECIDO",
+    amount: -42
+  });
+  assert.equal(unknown.category, "outros_gastos");
+  assert.equal(unknown.requiresConfirmation, true);
+});
+
+test("financial overview, subscriptions and AI sanitization are safe", () => {
+  const overview = financialProviderModule.buildFinancialOverview();
+  assert.equal(overview.sandbox, true);
+  assert.ok(overview.consolidatedBalance.amount > 0);
+  assert.ok(overview.subscriptions.length >= 1);
+
+  const sanitized = financialProviderModule.sanitizeForFinancialAgent({
+    overview,
+    accounts: financialProviderModule.sandboxAccounts,
+    transactions: financialProviderModule.sandboxTransactions
+  });
+  assert.ok(sanitized.sensitiveFieldsRemoved.includes("cpf"));
+  assert.ok(sanitized.accounts.every((account) => account.numberMask.startsWith("****")));
+  assert.equal(JSON.stringify(sanitized).includes("originalDescription"), false);
+});
+
+await Promise.all(pendingTests);
