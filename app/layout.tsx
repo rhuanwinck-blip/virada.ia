@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { inter, sora } from "@/app/fonts";
 import { PwaBoot } from "@/components/PwaBoot";
 import "@/app/globals.css";
@@ -18,6 +19,20 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <PwaBoot />
         {children}
+        <Script
+          id="vercel-web-analytics"
+          src="/_vercel/insights/script.js"
+          strategy="afterInteractive"
+          data-sdkn="@vercel/analytics/next"
+          data-sdkv="2.0.1"
+        />
+        <Script
+          id="vercel-speed-insights"
+          src="/_vercel/speed-insights/script.js"
+          strategy="afterInteractive"
+          data-sdkn="@vercel/speed-insights/next"
+          data-sdkv="2.0.0"
+        />
       </body>
     </html>
   );

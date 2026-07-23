@@ -70,6 +70,7 @@ const securityModule = loadTs(path.join(root, "lib/security.ts"));
 const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
 const financialProviderModule = loadTs(path.join(root, "lib/financial-provider.ts"));
 const financialSyncModule = loadTs(path.join(root, "lib/financial-sync.ts"));
+const paymentStoreModule = loadTs(path.join(root, "lib/payment-store.ts"));
 const personalOsModule = loadTs(path.join(root, "lib/personal-os.ts"));
 const productionReadinessModule = loadTs(path.join(root, "lib/production-readiness.ts"));
 
@@ -142,6 +143,23 @@ test("Mercado Pago webhook signatures validate safely", () => {
       signature: `ts=${timestamp},v1=bad`
     }),
     false
+  );
+});
+
+test("payment access references and entitlements are deterministic", () => {
+  const parsed = paymentStoreModule.parseCheckoutReference("pro:diagnostic-123:request-456");
+  assert.deepEqual(parsed, {
+    plan: "pro",
+    contextId: "diagnostic-123",
+    requestId: "request-456"
+  });
+  assert.equal(paymentStoreModule.parseCheckoutReference("bad:diagnostic-123"), null);
+  assert.equal(paymentStoreModule.getEntitlementStatus("approved"), "active");
+  assert.equal(paymentStoreModule.getEntitlementStatus("pending"), "pending");
+  assert.equal(paymentStoreModule.getEntitlementStatus("refunded"), "cancelled");
+  assert.match(
+    paymentStoreModule.getAccessExpiresAt("one-time", new Date("2026-07-01T00:00:00.000Z")),
+    /^2026-07-31T00:00:00\.000Z$/
   );
 });
 

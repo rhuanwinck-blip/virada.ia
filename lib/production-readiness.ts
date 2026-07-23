@@ -33,6 +33,8 @@ export function buildProductionReadinessReport(): ProductionReadinessReport {
   const production = env.APP_ENV === "production";
   const demoOff = env.DEMO_MODE === "false";
   const openFinanceProduction = env.OPEN_FINANCE_SANDBOX === "false";
+  const externalMonitoring = has(env.NEXT_PUBLIC_SENTRY_DSN) && has(env.NEXT_PUBLIC_POSTHOG_KEY);
+  const vercelNativeMonitoring = true;
   const checks: ReadinessCheck[] = [
     check("app-env", "Ambiente de producao", production, "APP_ENV precisa ser production.", true),
     check("demo-off", "Demo desligado", demoOff, "DEMO_MODE precisa ser false.", true),
@@ -52,7 +54,7 @@ export function buildProductionReadinessReport(): ProductionReadinessReport {
     check("push", "Web Push", has(env.WEB_PUSH_PUBLIC_KEY) && has(env.WEB_PUSH_PRIVATE_KEY), "Chaves VAPID/Web Push liberam lembretes reais.", false),
     check("calendar", "Google Calendar", has(env.GOOGLE_CLIENT_ID) && has(env.GOOGLE_CLIENT_SECRET) && has(env.GOOGLE_REDIRECT_URI), "Credenciais OAuth liberam agenda real.", false),
     check("whatsapp", "WhatsApp", has(env.WHATSAPP_ACCESS_TOKEN) && has(env.WHATSAPP_PHONE_NUMBER_ID), "WhatsApp Cloud API libera canal real.", false),
-    check("monitoring", "Observabilidade", has(env.NEXT_PUBLIC_SENTRY_DSN) && has(env.NEXT_PUBLIC_POSTHOG_KEY), "Sentry/PostHog ajudam a operar producao.", false),
+    check("monitoring", "Observabilidade", externalMonitoring || vercelNativeMonitoring, "Sentry/PostHog externos sao opcionais; Vercel Analytics/Speed Insights estao injetados no layout.", false),
     check("next-safe", "Next.js patched", isAtLeast(nextPackageJson.version, nextMinimum), `Atualize next para >= ${nextMinimum}.`, true),
     check("react-safe", "React patched", isAtLeast(reactPackageJson.version, reactRecommended) && isAtLeast(reactDomPackageJson.version, reactRecommended), `Atualize react/react-dom para >= ${reactRecommended}.`, true),
     manual("legal-review", "Revisao LGPD/juridica", "Termos, privacidade, consentimento financeiro e retencao precisam de revisao humana antes do go-live.", true),
