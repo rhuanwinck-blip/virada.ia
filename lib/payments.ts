@@ -31,6 +31,12 @@ export type MercadoPagoPayment = {
   status: PaymentState | "unknown";
   externalReference?: string;
   rawStatus?: string;
+  statusDetail?: string;
+  email?: string;
+  transactionAmount?: number;
+  currencyId?: string;
+  dateApproved?: string;
+  metadata?: Record<string, unknown>;
 };
 
 const checkoutPlans = {
@@ -145,7 +151,15 @@ export async function fetchMercadoPagoPayment(paymentId: string): Promise<Mercad
   const payment = (await response.json().catch(() => ({}))) as {
     id?: string | number;
     status?: string;
+    status_detail?: string;
     external_reference?: string;
+    transaction_amount?: number;
+    currency_id?: string;
+    date_approved?: string;
+    metadata?: Record<string, unknown>;
+    payer?: {
+      email?: string;
+    };
     message?: string;
   };
 
@@ -157,6 +171,12 @@ export async function fetchMercadoPagoPayment(paymentId: string): Promise<Mercad
     id: String(payment.id),
     status: isPaymentState(payment.status) ? payment.status : "unknown",
     externalReference: payment.external_reference,
-    rawStatus: payment.status
+    rawStatus: payment.status,
+    statusDetail: payment.status_detail,
+    email: payment.payer?.email,
+    transactionAmount: payment.transaction_amount,
+    currencyId: payment.currency_id,
+    dateApproved: payment.date_approved,
+    metadata: payment.metadata
   };
 }

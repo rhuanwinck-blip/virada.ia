@@ -12,4 +12,15 @@ Estados aceitos:
 - `refunded`
 - `charged_back`
 
-Regra crítica: relatório e acesso completo só são liberados após webhook válido ou consulta segura no servidor.
+Regra critica: relatorio e acesso completo so sao liberados apos webhook valido ou consulta segura no servidor.
+
+Persistencia de acesso:
+
+- `/api/payments/webhook` valida assinatura Mercado Pago em producao;
+- consulta o pagamento no servidor;
+- grava/atualiza `payments`;
+- grava/atualiza `user_entitlements`;
+- envia email transacional quando existe email do pagador;
+- registra auditoria em `audit_logs`.
+
+Migration necessaria para esse fluxo: `006_payment_entitlements.sql`.

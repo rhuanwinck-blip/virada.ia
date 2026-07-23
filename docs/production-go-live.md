@@ -11,6 +11,7 @@ Implementado no codigo:
 - cron Vercel diario em `vercel.json`;
 - persistencia Supabase para conexoes, contas, saldos, transacoes, raw payload sanitizado, cartoes, faturas, investimentos, assinaturas, jobs, webhooks e auditoria;
 - provider Pluggy com API Key server-side, connect token, item/status, contas, transacoes, cartoes derivados, faturas derivadas, investimentos e revogacao via delete item;
+- persistencia de pagamento aprovado em `payments` e `user_entitlements`;
 - modo sandbox preservado para preview;
 - producao real exige service role, conexoes financeiras ativas e cron protegido por `CRON_SECRET`; `OPEN_FINANCE_SYSTEM_USER_ID` e apenas fallback opcional;
 - nenhuma senha bancaria, token de provider, CPF completo, conta completa ou cartao completo vai para o frontend/agente.
@@ -59,10 +60,12 @@ Aplicar migrations em ordem:
 3. `003_proactive_assessor_schema.sql`
 4. `004_personal_os_open_finance_schema.sql`
 5. `005_financial_sync_operations.sql`
+6. `006_payment_entitlements.sql`
 
 Depois conferir:
 
 - RLS ativo nas tabelas financeiras;
+- RLS ativo em `user_entitlements`;
 - service role somente no backend;
 - exportacao/exclusao funcionando;
 - opcionalmente, `OPEN_FINANCE_SYSTEM_USER_ID` aponta para um usuario UUID controlado apenas para fallback/demo; em producao o cron varre conexoes ativas por usuario.

@@ -25,7 +25,7 @@ export async function sendTransactionalEmail(input: {
   subject: string;
   payload?: Record<string, unknown>;
 }) {
-  const html = await render(ResultReadyEmail({ name: String(input.payload?.name || "Você") }));
+  const html = await render(ResultReadyEmail({ name: String(input.payload?.name || "Voce") }));
   const text = `Virada IA\n\n${input.subject}\n\nAcesse sua conta para continuar.`;
 
   if (isDemoMode() || !process.env.RESEND_API_KEY) {
