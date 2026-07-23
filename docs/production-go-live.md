@@ -12,7 +12,7 @@ Implementado no codigo:
 - persistencia Supabase para conexoes, contas, saldos, transacoes, raw payload sanitizado, cartoes, faturas, investimentos, assinaturas, jobs, webhooks e auditoria;
 - provider Pluggy com API Key server-side, connect token, item/status, contas, transacoes, cartoes derivados, faturas derivadas, investimentos e revogacao via delete item;
 - modo sandbox preservado para preview;
-- producao real exige usuario autenticado ou `OPEN_FINANCE_SYSTEM_USER_ID` para cron;
+- producao real exige service role, conexoes financeiras ativas e cron protegido por `CRON_SECRET`; `OPEN_FINANCE_SYSTEM_USER_ID` e apenas fallback opcional;
 - nenhuma senha bancaria, token de provider, CPF completo, conta completa ou cartao completo vai para o frontend/agente.
 
 ## Variaveis Obrigatorias Para Producao

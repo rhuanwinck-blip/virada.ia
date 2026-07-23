@@ -9,7 +9,8 @@ export function initAnalytics() {
   if (initialized || !process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://app.posthog.com",
-    capture_pageview: false,
+    capture_pageview: true,
+    autocapture: false,
     persistence: "localStorage+cookie"
   });
   initialized = true;
