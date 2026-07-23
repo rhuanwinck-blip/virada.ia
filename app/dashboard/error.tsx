@@ -1,8 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { RotateCcw } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
-export default function DashboardError({ reset }: { reset: () => void }) {
+export default function DashboardError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <main className="dashboard-shell command-theme" style={{ gridTemplateColumns: "1fr" }}>
       <div className="command-grid" />
