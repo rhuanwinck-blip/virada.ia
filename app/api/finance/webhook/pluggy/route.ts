@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getFinancialDataProvider } from "@/lib/financial-provider";
+import { recordFinancialWebhookEvent } from "@/lib/financial-store";
 import { getRuntimeEnv, verifyReplayProtectedSignature } from "@/lib/security";
 
 const processedWebhookKeys = new Set<string>();
@@ -26,12 +27,17 @@ export async function POST(request: Request) {
   const payload = JSON.parse(payloadText || "{}") as Record<string, unknown>;
   const provider = getFinancialDataProvider();
   const event = await provider.handleWebhook(payload);
+  const persistence = await recordFinancialWebhookEvent({
+    event,
+    signatureValid: signatureVerified
+  });
 
   if (processedWebhookKeys.has(event.idempotencyKey)) {
     return NextResponse.json({
       ok: true,
       duplicate: true,
       signatureVerified,
+      persistence,
       event: { ...event, status: "duplicate" }
     });
   }
@@ -43,6 +49,8 @@ export async function POST(request: Request) {
     duplicate: false,
     signatureVerified,
     sandboxAccepted: !signatureVerified,
+    persistence,
+    syncQueued: event.shouldSync,
     event
   });
 }

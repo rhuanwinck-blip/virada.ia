@@ -23,5 +23,10 @@ Open Finance:
 - revogação e remoção de dados preparadas;
 - payload financeiro sanitizado antes de logs e agentes;
 - agente financeiro usa dados agregados, normalizados, mascarados e minimizados.
+- `/api/finance/sync` protegido por `CRON_SECRET`;
+- `/api/readiness` bloqueia go-live sem secrets, Supabase real, Open Finance real, criptografia, cron e revisoes externas;
+- persistencia financeira usa service role somente no backend;
+- rotas financeiras exigem usuario autenticado quando `APP_ENV=production`, `DEMO_MODE=false` e `OPEN_FINANCE_SANDBOX=false`;
+- CSP permite apenas providers e widgets oficiais necessarios para Open Finance.
 
 Nunca expor chaves no frontend, liberar relatório por retorno do navegador, armazenar senha bancária, registrar token em texto simples ou enviar CPF/cartão completo para o modelo.

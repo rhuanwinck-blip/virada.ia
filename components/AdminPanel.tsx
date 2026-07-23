@@ -6,6 +6,7 @@ import { Activity, AlertTriangle, BellRing, CalendarClock, FlaskConical, Save, S
 import { HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
 import { adminMetrics, defaultAdminConfig } from "@/lib/admin-config";
 import { assistantNavigation, integrations } from "@/lib/assistant-core";
+import type { ProductionReadinessReport } from "@/lib/production-readiness";
 
 const adminSections = [
   "Visao geral",
@@ -30,7 +31,7 @@ const adminSections = [
   "Configuracoes"
 ];
 
-export function AdminPanel() {
+export function AdminPanel({ readiness }: { readiness?: ProductionReadinessReport }) {
   const [active, setActive] = useState("Visao geral");
 
   return (
@@ -60,10 +61,10 @@ export function AdminPanel() {
           <HolographicPanel label="Saude operacional">
             <div className="bar-list">
               {[
+                ["Readiness", readiness ? `${readiness.score}%` : "Nao carregado"],
+                ["Bloqueios", readiness ? `${readiness.blockers.length}` : "Ver API"],
                 ["Checkout", "Preservado"],
-                ["Webhooks", "Assinatura validada"],
-                ["Google Calendar", "Contrato pronto"],
-                ["WhatsApp", "Aguardando credenciais"]
+                ["Webhooks", "Assinatura validada"]
               ].map(([label, value]) => (
                 <div className="bar-label" key={label}>
                   <span>{label}</span>
@@ -105,7 +106,7 @@ export function AdminPanel() {
             </aside>
 
             <HolographicPanel className="dashboard-card" label={active}>
-              {renderAdminModule(active)}
+              {renderAdminModule(active, readiness)}
             </HolographicPanel>
           </div>
         </section>
@@ -124,12 +125,26 @@ function StatusCard({ label, value, detail }: { label: string; value: string; de
   );
 }
 
-function renderAdminModule(active: string) {
+function renderAdminModule(active: string, readiness?: ProductionReadinessReport) {
   if (active === "Visao geral") {
     return (
       <>
         <h2>Funil do assessor</h2>
         <p className="premium-copy">Acompanhe visita, checkout, ativacao, onboarding, primeiro comando, primeira confirmacao e retencao.</p>
+        {readiness ? (
+          <div className="cards-grid" style={{ marginTop: 18 }}>
+            <article className="info-card">
+              <h3>{readiness.ready ? "Pronto para producao" : "Ainda nao esta 100%"}</h3>
+              <p>Readiness atual: {readiness.score}%. Bloqueios: {readiness.blockers.length}.</p>
+            </article>
+            {readiness.blockers.slice(0, 2).map((blocker) => (
+              <article className="info-card" key={blocker.id}>
+                <h3>{blocker.label}</h3>
+                <p>{blocker.detail}</p>
+              </article>
+            ))}
+          </div>
+        ) : null}
         <div className="data-flow" style={{ marginTop: 18 }}>
           {["Visita", "Checkout", "Ativacao", "Onboarding", "Comando", "Confirmacao"].map((step, index) => (
             <div className="data-flow__item" key={step}>

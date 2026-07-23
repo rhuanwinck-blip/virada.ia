@@ -13,7 +13,8 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.posthog.com https://*.sentry.io https://api.openai.com https://api.mercadopago.com",
+      "connect-src 'self' https://*.posthog.com https://*.sentry.io https://api.openai.com https://api.mercadopago.com https://api.pluggy.ai https://api.belvo.com",
+      "frame-src 'self' https://connect.pluggy.ai https://sandbox.belvo.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'"

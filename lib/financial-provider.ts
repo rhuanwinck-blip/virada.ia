@@ -230,6 +230,7 @@ export interface FinancialDataProvider {
   createConnectToken(input: ConnectTokenInput): Promise<ConnectTokenResult>;
   createConnection(input: CreateConnectionInput): Promise<FinancialConnection>;
   getConnectionStatus(connectionId: string): Promise<FinancialConnectionStatus>;
+  listConnections(userId?: string): Promise<FinancialConnection[]>;
   listInstitutions(): Promise<FinancialInstitution[]>;
   listAccounts(connectionId?: string): Promise<FinancialAccount[]>;
   listBalances(connectionId?: string): Promise<FinancialBalance[]>;
@@ -476,6 +477,32 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
   }
 
   async createConnection(input: CreateConnectionInput): Promise<FinancialConnection> {
+    const sandbox = isOpenFinanceSandbox() || !hasPluggyCredentials();
+    if (!sandbox && input.providerItemId) {
+      const item = await this.retrieveItem(input.providerItemId);
+      return {
+        id: `fin-conn-${item.id}`,
+        userId: input.userId,
+        provider: this.name,
+        providerItemId: item.id,
+        institutionId: String(item.connector?.id ?? input.institutionId ?? "pluggy-production"),
+        institutionName: String(item.connector?.name ?? item.connector?.institutionName ?? "Instituicao Open Finance"),
+        status: mapPluggyItemStatus(item.status, item.executionStatus),
+        consentStatus: "active",
+        consentExpiresAt: item.expiresAt ?? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        lastSyncAt: item.lastUpdatedAt ?? new Date().toISOString(),
+        nextSyncAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+        products: mapPluggyProducts(item.products),
+        accountName: "Conexao Open Finance",
+        accountType: "checking",
+        accountMask: "****",
+        holderMask: "Titular protegido",
+        errorCode: item.error?.code,
+        errorMessage: item.error?.message,
+        sandbox: false
+      };
+    }
+
     const institution = sandboxInstitutions.find((item) => item.id === input.institutionId) ?? sandboxInstitutions[0];
     return {
       ...sandboxFinancialConnections[0],
@@ -493,7 +520,16 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
   }
 
   async getConnectionStatus(connectionId: string): Promise<FinancialConnectionStatus> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const item = await this.retrieveItem(resolveProviderItemId(connectionId));
+      return mapPluggyItemStatus(item.status, item.executionStatus);
+    }
+
     return sandboxFinancialConnections.find((connection) => connection.id === connectionId)?.status ?? "atencao_necessaria";
+  }
+
+  async listConnections(userId?: string): Promise<FinancialConnection[]> {
+    return userId ? sandboxFinancialConnections.filter((connection) => connection.userId === userId || userId !== "demo-user") : sandboxFinancialConnections;
   }
 
   async listInstitutions(): Promise<FinancialInstitution[]> {
@@ -501,16 +537,51 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
   }
 
   async listAccounts(connectionId?: string): Promise<FinancialAccount[]> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const providerItemId = resolveProviderItemId(connectionId);
+      const accounts = await this.listPluggyAccounts(providerItemId);
+      return accounts
+        .filter((account) => account.type !== "CREDIT")
+        .map((account) => mapPluggyAccount(account, `fin-conn-${providerItemId}`));
+    }
+
     return filterByConnection(sandboxAccounts, connectionId);
   }
 
   async listBalances(connectionId?: string): Promise<FinancialBalance[]> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const accounts = await this.listAccounts(connectionId);
+      return accounts.map((account) => ({
+        accountId: account.id,
+        available: account.balance,
+        current: account.balance,
+        updatedAt: account.updatedAt,
+        sandbox: false
+      }));
+    }
+
     if (!connectionId) return sandboxBalances;
     const accountIds = sandboxAccounts.filter((account) => account.connectionId === connectionId).map((account) => account.id);
     return sandboxBalances.filter((balance) => accountIds.includes(balance.accountId));
   }
 
   async listTransactions(filters?: { connectionId?: string; from?: string; to?: string; category?: FinancialCategory }): Promise<FinancialTransaction[]> {
+    if (!this.shouldUseSandbox(filters?.connectionId)) {
+      const providerItemId = resolveProviderItemId(filters?.connectionId);
+      const accounts = await this.listPluggyAccounts(providerItemId);
+      const transactions = await Promise.all(
+        accounts.map(async (account) => {
+          const rows = await this.listPluggyTransactions(account.id, filters);
+          return rows.map((transaction) => mapPluggyTransaction(transaction, account, `fin-conn-${providerItemId}`));
+        })
+      );
+
+      return transactions.flat().filter((transaction) => {
+        if (filters?.category && transaction.category !== filters.category) return false;
+        return true;
+      });
+    }
+
     return sandboxTransactions.filter((transaction) => {
       if (filters?.connectionId && transaction.connectionId !== filters.connectionId) return false;
       if (filters?.category && transaction.category !== filters.category) return false;
@@ -521,20 +592,58 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
   }
 
   async listCreditCards(connectionId?: string): Promise<CreditCard[]> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const providerItemId = resolveProviderItemId(connectionId);
+      const accounts = await this.listPluggyAccounts(providerItemId);
+      return accounts
+        .filter((account) => account.type === "CREDIT")
+        .map((account) => mapPluggyCreditCard(account, `fin-conn-${providerItemId}`));
+    }
+
     return filterByConnection(sandboxCreditCards, connectionId);
   }
 
   async listBills(connectionId?: string): Promise<CreditCardBill[]> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const cards = await this.listCreditCards(connectionId);
+      return cards.map((card) => ({
+        id: `bill-${card.id}-${new Date().toISOString().slice(0, 7)}`,
+        cardId: card.id,
+        dueDate: nextIsoDateForDay(card.dueDay),
+        closingDate: nextIsoDateForDay(card.closingDay),
+        amount: card.currentBill,
+        status: "open",
+        projectedAmount: brl(card.currentBill.amount * 1.08),
+        confidence: 0.68,
+        sandbox: false
+      }));
+    }
+
     if (!connectionId) return sandboxBills;
     const cardIds = sandboxCreditCards.filter((card) => card.connectionId === connectionId).map((card) => card.id);
     return sandboxBills.filter((bill) => cardIds.includes(bill.cardId));
   }
 
   async listInvestments(connectionId?: string): Promise<FinancialInvestment[]> {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const providerItemId = resolveProviderItemId(connectionId);
+      const investments = await this.listPluggyInvestments(providerItemId);
+      return investments.map((investment) => mapPluggyInvestment(investment, `fin-conn-${providerItemId}`));
+    }
+
     return filterByConnection(sandboxInvestments, connectionId);
   }
 
   async refreshConnection(connectionId: string) {
+    if (!this.shouldUseSandbox(connectionId)) {
+      const status = await this.getConnectionStatus(connectionId);
+      return {
+        status,
+        syncJobId: `sync-${connectionId}-${Date.now()}`,
+        message: "Status consultado na Pluggy. A coleta incremental acontece no sync backend e na auto-sync contratada do provider."
+      };
+    }
+
     return {
       status: "sincronizando" as const,
       syncJobId: `sync-${connectionId}-${Date.now()}`,
@@ -543,6 +652,15 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
   }
 
   async revokeConnection(connectionId: string) {
+    if (!this.shouldUseSandbox(connectionId)) {
+      await this.deleteItem(resolveProviderItemId(connectionId));
+      return {
+        status: "revogada" as const,
+        revokedAt: new Date().toISOString(),
+        message: "Consentimento revogado na Pluggy via DELETE /items/{id}; dados locais devem ser removidos ou retidos conforme LGPD."
+      };
+    }
+
     return {
       status: "revogada" as const,
       revokedAt: new Date().toISOString(),
@@ -587,6 +705,83 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
     if (!apiKey) throw new Error("pluggy_api_key_missing");
     return apiKey;
   }
+
+  private shouldUseSandbox(connectionId?: string) {
+    return isOpenFinanceSandbox() || !hasPluggyCredentials() || !connectionId;
+  }
+
+  private async pluggyGet<T>(path: string): Promise<T> {
+    const apiKey = await this.createApiKey();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey
+      }
+    });
+
+    if (!response.ok) throw new Error(`pluggy_get_failed:${path}:${response.status}`);
+    return (await response.json()) as T;
+  }
+
+  private async pluggyDelete(path: string): Promise<void> {
+    const apiKey = await this.createApiKey();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey
+      }
+    });
+
+    if (!response.ok && response.status !== 204) throw new Error(`pluggy_delete_failed:${path}:${response.status}`);
+  }
+
+  private async pluggyList<T>(path: string, params: Record<string, string | undefined> = {}): Promise<T[]> {
+    const rows: T[] = [];
+    let nextPath: string | null = null;
+    let page = 0;
+
+    do {
+      const requestUrl: URL = new URL(nextPath ? `${this.baseUrl}${nextPath}` : `${this.baseUrl}${path}`);
+      if (!nextPath) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value) requestUrl.searchParams.set(key, value);
+        });
+      }
+
+      const data: { results?: T[]; next?: string } | T[] = await this.pluggyGet(`${requestUrl.pathname}${requestUrl.search}`);
+      const results = Array.isArray(data) ? data : data.results ?? [];
+      rows.push(...results);
+      nextPath = Array.isArray(data) ? null : data.next ?? null;
+      page += 1;
+    } while (nextPath && page < 10);
+
+    return rows;
+  }
+
+  private retrieveItem(itemId: string) {
+    return this.pluggyGet<PluggyItem>(`/items/${encodeURIComponent(itemId)}`);
+  }
+
+  private deleteItem(itemId: string) {
+    return this.pluggyDelete(`/items/${encodeURIComponent(itemId)}`);
+  }
+
+  private listPluggyAccounts(itemId: string) {
+    return this.pluggyList<PluggyAccount>("/accounts", { itemId });
+  }
+
+  private listPluggyTransactions(accountId: string, filters?: { from?: string; to?: string }) {
+    return this.pluggyList<PluggyTransaction>("/transactions", {
+      accountId,
+      dateFrom: filters?.from,
+      dateTo: filters?.to
+    });
+  }
+
+  private listPluggyInvestments(itemId: string) {
+    return this.pluggyList<PluggyInvestment>("/investments", { itemId });
+  }
 }
 
 export class BelvoFinancialDataProvider extends PluggyFinancialDataProvider {
@@ -605,6 +800,73 @@ export class BelvoFinancialDataProvider extends PluggyFinancialDataProvider {
     };
   }
 }
+
+type PluggyItem = {
+  id: string;
+  status?: string;
+  executionStatus?: string;
+  lastUpdatedAt?: string;
+  expiresAt?: string;
+  products?: string[];
+  connector?: {
+    id?: string | number;
+    name?: string;
+    institutionName?: string;
+  };
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+type PluggyAccount = {
+  id: string;
+  itemId: string;
+  type: "BANK" | "CREDIT" | string;
+  subtype?: string;
+  name?: string;
+  marketingName?: string;
+  number?: string;
+  owner?: string;
+  balance?: number;
+  currencyCode?: string;
+  bankData?: {
+    closingBalance?: number;
+  };
+  creditData?: {
+    creditLimit?: number;
+    availableCreditLimit?: number;
+    balanceDueDate?: string;
+    balanceCloseDate?: string;
+  };
+};
+
+type PluggyTransaction = {
+  id: string;
+  accountId: string;
+  description?: string;
+  descriptionRaw?: string | null;
+  amount: number;
+  date: string;
+  status?: string;
+  type?: "CREDIT" | "DEBIT" | string;
+  category?: string | null;
+};
+
+type PluggyInvestment = {
+  id: string;
+  itemId: string;
+  type?: string;
+  subtype?: string;
+  name?: string;
+  balance?: number;
+  amount?: number;
+  amountOriginal?: number;
+  date?: string;
+  institution?: {
+    name?: string;
+  };
+};
 
 export function getFinancialDataProvider(): FinancialDataProvider {
   const provider = (process.env.FINANCIAL_DATA_PROVIDER ?? "pluggy").toLowerCase();
@@ -812,6 +1074,147 @@ function hasPluggyCredentials() {
 
 function optionalString(value: unknown) {
   return typeof value === "string" && value.length ? value : undefined;
+}
+
+function resolveProviderItemId(connectionId?: string) {
+  if (!connectionId) return "";
+  if (connectionId.startsWith("fin-conn-")) return connectionId.replace("fin-conn-", "");
+  const sandbox = sandboxFinancialConnections.find((connection) => connection.id === connectionId);
+  return sandbox?.providerItemId ?? connectionId;
+}
+
+function mapPluggyItemStatus(status?: string, executionStatus?: string): FinancialConnectionStatus {
+  const normalized = `${status ?? ""}:${executionStatus ?? ""}`.toLowerCase();
+  if (/updated:success|updated:partial_success/.test(normalized)) return "conectada";
+  if (/updating|created|login_in_progress|mfa_in_progress/.test(normalized)) return "sincronizando";
+  if (/waiting_user_input|mfa/.test(normalized)) return "aguardando_consentimento";
+  if (/login_error|invalid_credentials/.test(normalized)) return "atencao_necessaria";
+  if (/outdated|error/.test(normalized)) return "erro_temporario";
+  return "conectando";
+}
+
+function mapPluggyProducts(products?: string[]): FinancialProduct[] {
+  const normalized = new Set((products ?? []).map((product) => product.toLowerCase()));
+  const result: FinancialProduct[] = [];
+  if (!products?.length || normalized.has("accounts")) result.push("accounts", "balances");
+  if (!products?.length || normalized.has("transactions")) result.push("transactions");
+  if (normalized.has("credit_cards") || normalized.has("creditcards")) result.push("credit_cards", "bills");
+  if (normalized.has("investments")) result.push("investments");
+  return Array.from(new Set(result));
+}
+
+function mapPluggyAccount(account: PluggyAccount, connectionId: string): FinancialAccount {
+  const subtype = account.subtype?.toLowerCase() ?? "";
+  return {
+    id: account.id,
+    connectionId,
+    institutionName: "Open Finance Pluggy",
+    name: account.marketingName ?? account.name ?? "Conta Open Finance",
+    type: subtype.includes("saving") ? "savings" : "checking",
+    numberMask: maskAccount(account.number ?? account.id),
+    holderMask: maskHolder(account.owner),
+    balance: brl(account.bankData?.closingBalance ?? account.balance ?? 0),
+    updatedAt: new Date().toISOString(),
+    sandbox: false
+  };
+}
+
+function mapPluggyCreditCard(account: PluggyAccount, connectionId: string): CreditCard {
+  const limit = account.creditData?.creditLimit ?? Math.max(account.balance ?? 0, 0);
+  const availableLimit = account.creditData?.availableCreditLimit ?? Math.max(limit - Math.max(account.balance ?? 0, 0), 0);
+  const currentBill = Math.max((account.balance ?? 0), 0);
+  const closingDay = parseIsoDay(account.creditData?.balanceCloseDate, 27);
+  const dueDay = parseIsoDay(account.creditData?.balanceDueDate, 5);
+
+  return {
+    id: account.id,
+    connectionId,
+    institutionName: "Open Finance Pluggy",
+    name: account.marketingName ?? account.name ?? "Cartao Open Finance",
+    finalDigits: (account.number ?? account.id).replace(/\D/g, "").slice(-4).padStart(4, "0"),
+    limit: brl(limit),
+    availableLimit: brl(availableLimit),
+    currentBill: brl(currentBill),
+    closingDay,
+    dueDay,
+    utilization: limit ? Math.round((currentBill / limit) * 100) : 0,
+    sandbox: false
+  };
+}
+
+function mapPluggyTransaction(transaction: PluggyTransaction, account: PluggyAccount, connectionId: string): FinancialTransaction {
+  const description = transaction.description ?? transaction.descriptionRaw ?? "Transacao Open Finance";
+  const creditAccount = account.type === "CREDIT";
+  const isOutflow = creditAccount ? transaction.amount > 0 : transaction.amount < 0;
+  const normalizedAmount = isOutflow ? -Math.abs(transaction.amount) : Math.abs(transaction.amount);
+  const category = categorizeTransaction({ description, amount: normalizedAmount });
+
+  return {
+    id: transaction.id,
+    connectionId,
+    accountId: account.id,
+    institutionName: "Open Finance Pluggy",
+    originalDescription: description,
+    normalizedDescription: normalizeDescription(description),
+    amount: brl(normalizedAmount),
+    date: transaction.date.slice(0, 10),
+    category: category.category,
+    type: isOutflow ? "saida" : "entrada",
+    status: transaction.status?.toLowerCase() === "pending" ? "pending" : "posted",
+    recurring: false,
+    confidence: category.confidence,
+    source: "pluggy",
+    externalId: transaction.id,
+    syncedAt: new Date().toISOString(),
+    rawPreserved: true,
+    sandbox: false
+  };
+}
+
+function mapPluggyInvestment(investment: PluggyInvestment, connectionId: string): FinancialInvestment {
+  return {
+    id: investment.id,
+    connectionId,
+    institutionName: investment.institution?.name ?? "Open Finance Pluggy",
+    type: mapInvestmentType(investment.type),
+    product: investment.name ?? investment.subtype ?? "Investimento Open Finance",
+    balance: brl(investment.balance ?? investment.amount ?? 0),
+    investedAmount: brl(investment.amountOriginal ?? investment.amount ?? investment.balance ?? 0),
+    updatedAt: investment.date ?? new Date().toISOString(),
+    sandbox: false
+  };
+}
+
+function mapInvestmentType(type?: string): FinancialInvestment["type"] {
+  const normalized = type?.toLowerCase() ?? "";
+  if (normalized.includes("fixed")) return "renda_fixa";
+  if (normalized.includes("treasury")) return "tesouro";
+  if (normalized.includes("fund")) return "fundo";
+  if (normalized.includes("equity") || normalized.includes("stock")) return "acao";
+  return "manual";
+}
+
+function maskHolder(value?: string) {
+  if (!value) return "Titular protegido";
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => `${part[0] ?? ""}${"*".repeat(Math.max(part.length - 1, 1))}`)
+    .join(" ");
+}
+
+function parseIsoDay(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const day = Number(value.slice(8, 10));
+  return Number.isFinite(day) && day >= 1 && day <= 31 ? day : fallback;
+}
+
+function nextIsoDateForDay(day: number) {
+  const date = new Date();
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCDate(Math.min(day, 28));
+  if (date.getTime() < Date.now()) date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 function sanitizeWebhookPayload(payload: Record<string, unknown>) {

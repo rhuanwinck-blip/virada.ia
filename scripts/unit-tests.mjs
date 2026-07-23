@@ -1,21 +1,30 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import ts from "typescript";
 
 const root = process.cwd();
 const cache = new Map();
 
 function resolveTs(id, parentFile) {
-  if (id.startsWith("@/")) return path.join(root, `${id.slice(2)}.ts`);
-  if (id.startsWith(".")) return path.resolve(path.dirname(parentFile), `${id}.ts`);
+  if (id.startsWith("@/")) return resolveLocal(path.join(root, id.slice(2)));
+  if (id.startsWith(".")) return resolveLocal(path.resolve(path.dirname(parentFile), id));
   return null;
+}
+
+function resolveLocal(basePath) {
+  if (existsSync(basePath)) return basePath;
+  if (existsSync(`${basePath}.ts`)) return `${basePath}.ts`;
+  if (existsSync(`${basePath}.tsx`)) return `${basePath}.tsx`;
+  if (existsSync(`${basePath}.json`)) return `${basePath}.json`;
+  return `${basePath}.ts`;
 }
 
 function loadTs(file) {
   const normalized = path.normalize(file);
   if (cache.has(normalized)) return cache.get(normalized).exports;
+  if (normalized.endsWith(".json")) return createRequire(normalized)(normalized);
 
   const source = readFileSync(normalized, "utf8");
   const localModule = { exports: {} };
@@ -60,7 +69,9 @@ const scoringModule = loadTs(path.join(root, "lib/scoring.ts"));
 const securityModule = loadTs(path.join(root, "lib/security.ts"));
 const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
 const financialProviderModule = loadTs(path.join(root, "lib/financial-provider.ts"));
+const financialSyncModule = loadTs(path.join(root, "lib/financial-sync.ts"));
 const personalOsModule = loadTs(path.join(root, "lib/personal-os.ts"));
+const productionReadinessModule = loadTs(path.join(root, "lib/production-readiness.ts"));
 
 test("scoreDiagnostic is deterministic", () => {
   const first = scoringModule.scoreDiagnostic(questionsModule.demoAnswers);
@@ -190,6 +201,7 @@ test("financial provider abstraction exposes required Open Finance methods", () 
     "createConnectToken",
     "createConnection",
     "getConnectionStatus",
+    "listConnections",
     "listInstitutions",
     "listAccounts",
     "listBalances",
@@ -205,6 +217,35 @@ test("financial provider abstraction exposes required Open Finance methods", () 
 
   const belvo = new financialProviderModule.BelvoFinancialDataProvider();
   assert.equal(belvo.name, "belvo");
+});
+
+test("financial sync runs in read-only sandbox without persistence credentials", async () => {
+  const result = await financialSyncModule.runFinancialSync({
+    userId: "demo-user",
+    kind: "manual"
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.readOnly, true);
+  assert.equal(result.sandbox, true);
+  assert.ok(result.stats.transactions >= 1);
+  assert.equal(result.persistence.persisted, false);
+});
+
+test("financial cron sync scans safely in sandbox", async () => {
+  const result = await financialSyncModule.runFinancialCronSync();
+  assert.equal(result.ok, true);
+  assert.equal(result.readOnly, true);
+  assert.ok(result.users >= 1);
+  assert.ok(result.results.every((item) => item.readOnly));
+});
+
+test("production readiness exposes blockers before real go-live", () => {
+  const report = productionReadinessModule.buildProductionReadinessReport();
+  assert.equal(report.ready, false);
+  assert.ok(report.blockers.some((item) => item.id === "app-env"));
+  assert.ok(report.blockers.some((item) => item.id === "legal-review"));
+  assert.ok(report.checks.some((item) => item.id === "next-safe"));
 });
 
 test("Pluggy sandbox returns masked read-only financial data", async () => {
