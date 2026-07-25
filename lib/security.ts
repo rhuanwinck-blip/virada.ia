@@ -79,6 +79,13 @@ export function verifyWebhookSignature(payload: string, signature: string | null
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
 }
 
+export function verifySharedSecretHeader(header: string | null, secret?: string) {
+  if (!secret || !header) return false;
+  const presented = header.trim().replace(/^Bearer\s+/i, "");
+  if (presented.length !== secret.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(secret));
+}
+
 function parseMercadoPagoSignature(signature: string | null) {
   if (!signature) return null;
 
