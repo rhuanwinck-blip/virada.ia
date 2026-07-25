@@ -77,7 +77,7 @@ No painel Pluggy:
 - ativar conta/contrato de producao;
 - liberar produtos: accounts, transactions, credit cards/bills quando disponivel, investments;
 - configurar webhook para `/api/finance/webhook/pluggy`;
-- configurar o secret igual a `PLUGGY_WEBHOOK_SECRET`;
+- configurar via API Pluggy o header customizado `X-Virada-Webhook-Secret` igual a `PLUGGY_WEBHOOK_SECRET`;
 - testar consentimento real com usuario piloto;
 - testar revogacao via acao `revoke`.
 
