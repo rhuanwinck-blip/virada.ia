@@ -23,6 +23,7 @@ export function CheckoutForm({ plan, price }: CheckoutFormProps) {
 
     if (!form.reportValidity()) return;
 
+    const submittedEmail = String(new FormData(form).get("email") || "").trim();
     setIsSubmitting(true);
     setError("");
 
@@ -30,7 +31,7 @@ export function CheckoutForm({ plan, price }: CheckoutFormProps) {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, email })
+        body: JSON.stringify({ plan, email: submittedEmail })
       });
 
       const session = (await response.json().catch(() => ({}))) as CheckoutSessionResponse;
