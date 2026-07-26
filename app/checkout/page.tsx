@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CreditCard, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { BadgeCheck, CreditCard, LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckoutForm } from "@/components/CheckoutForm";
 import { AutomationFlow, HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
 import { onboardingSteps } from "@/lib/assistant-core";
 
@@ -65,16 +66,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
                 </p>
               </article>
             </div>
-            <form action="/api/checkout" className="contact-form" method="post" style={{ marginTop: 22 }}>
-              <input type="hidden" name="plan" value={selectedPlan} />
-              <label className="field">
-                <span>E-mail para receber acesso</span>
-                <input autoComplete="email" name="email" placeholder="voce@email.com" required type="email" />
-              </label>
-              <button className="button" type="submit">
-                Pagar {plan.price} no Mercado Pago <ArrowRight size={18} />
-              </button>
-            </form>
+            <CheckoutForm plan={selectedPlan} price={plan.price} />
           </HolographicPanel>
 
           <HolographicPanel label="Depois da compra">
