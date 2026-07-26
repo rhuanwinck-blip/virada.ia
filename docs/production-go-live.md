@@ -2,6 +2,34 @@
 
 Este documento separa o que o codigo ja faz do que depende de credenciais, contrato ou revisao humana.
 
+## Status Atual Em 2026-07-26
+
+Ambiente tecnico de producao:
+
+- Vercel em producao em `https://virada-ia.vercel.app`;
+- `APP_ENV=production` e `DEMO_MODE=false`;
+- Supabase real configurado com service role;
+- migrations financeiras, sync, RLS e pagamentos aplicadas;
+- OpenAI configurada;
+- Mercado Pago real configurado com webhook;
+- Resend configurado para envio basico;
+- cron protegido por `CRON_SECRET`;
+- criptografia financeira configurada;
+- Pluggy configurado no backend com client id, client secret e webhook secret;
+- webhook Pluggy criado para `/api/finance/webhook/pluggy`;
+- webhook Pluggy autenticado por header `X-Virada-Webhook-Secret`;
+- teste de webhook Pluggy em producao respondeu 200, persistiu evento e enfileirou sync;
+- Vercel Analytics e Speed Insights injetados no layout.
+
+Pendencias de go-live oficial:
+
+- solicitacao de producao Pluggy esta pendente de aprovacao;
+- solicitacao de dados reais Pluggy esta pendente de aprovacao;
+- due diligence Pluggy ainda nao liberada no painel;
+- falta piloto com banco real apos liberacao da Pluggy;
+- falta revisao LGPD/juridica humana;
+- recomendado configurar dominio proprio e dominio verificado no Resend antes de divulgacao ampla.
+
 ## Estado Atual
 
 Implementado no codigo:
@@ -10,7 +38,7 @@ Implementado no codigo:
 - sync financeiro em `/api/finance/sync`;
 - cron Vercel diario em `vercel.json`;
 - persistencia Supabase para conexoes, contas, saldos, transacoes, raw payload sanitizado, cartoes, faturas, investimentos, assinaturas, jobs, webhooks e auditoria;
-- provider Pluggy com API Key server-side, connect token, item/status, contas, transacoes, cartoes derivados, faturas derivadas, investimentos e revogacao via delete item;
+- provider Pluggy com client id/client secret server-side, connect token, item/status, contas, transacoes, cartoes derivados, faturas derivadas, investimentos e revogacao via delete item;
 - persistencia de pagamento aprovado em `payments` e `user_entitlements`;
 - modo sandbox preservado para preview;
 - producao real exige service role, conexoes financeiras ativas e cron protegido por `CRON_SECRET`; `OPEN_FINANCE_SYSTEM_USER_ID` e apenas fallback opcional;
@@ -18,7 +46,7 @@ Implementado no codigo:
 
 ## Variaveis Obrigatorias Para Producao
 
-Definir na Vercel:
+Obrigatorias no ambiente de producao da Vercel:
 
 - `APP_ENV=production`
 - `DEMO_MODE=false`
@@ -53,7 +81,7 @@ Opcionais, mas recomendadas:
 
 ## Supabase
 
-Aplicar migrations em ordem:
+Migrations esperadas em ordem:
 
 1. `001_initial_schema.sql`
 2. `002_product_evolution_schema.sql`
@@ -62,7 +90,9 @@ Aplicar migrations em ordem:
 5. `005_financial_sync_operations.sql`
 6. `006_payment_entitlements.sql`
 
-Depois conferir:
+Estado atual: migrations aplicadas no Supabase real e grants de service role revisados.
+
+Continuar conferindo:
 
 - RLS ativo nas tabelas financeiras;
 - RLS ativo em `user_entitlements`;
@@ -74,12 +104,15 @@ Depois conferir:
 
 No painel Pluggy:
 
-- ativar conta/contrato de producao;
-- liberar produtos: accounts, transactions, credit cards/bills quando disponivel, investments;
-- configurar webhook para `/api/finance/webhook/pluggy`;
-- configurar via API Pluggy o header customizado `X-Virada-Webhook-Secret` igual a `PLUGGY_WEBHOOK_SECRET`;
-- testar consentimento real com usuario piloto;
-- testar revogacao via acao `revoke`.
+- checklist tecnico concluido: 3 de 3;
+- item demo conectado com sucesso;
+- webhook configurado para `https://virada-ia.vercel.app/api/finance/webhook/pluggy`;
+- header customizado `X-Virada-Webhook-Secret` configurado via API Pluggy;
+- solicitacao de producao enviada e pendente;
+- solicitacao de dados reais enviada e pendente;
+- aguardar Pluggy liberar due diligence;
+- apos liberacao, testar consentimento real com usuario piloto;
+- apos liberacao, testar revogacao via acao `revoke`.
 
 ## Validacao Antes Do Merge
 
@@ -102,9 +135,10 @@ Com `DEMO_MODE=false`, `pnpm setup:check` deve falhar enquanto faltar variavel, 
 
 Nada disso pode ser resolvido por codigo sozinho:
 
-- inserir secrets reais na Vercel;
-- aplicar migrations no Supabase real;
-- contratar/ativar Pluggy ou Belvo;
+- aguardar aprovacao Pluggy para producao;
+- aguardar aprovacao Pluggy para dados reais;
+- completar due diligence Pluggy quando o painel liberar;
 - rodar piloto com conta real controlada;
 - revisar LGPD, termos, politica de privacidade, retencao e consentimento financeiro com responsavel juridico;
-- atualizar dependencias Next/React para versoes corrigidas no lockfile com acesso ao registry.
+- configurar dominio proprio e dominio de email verificado no Resend;
+- fazer compra real controlada no Mercado Pago antes de divulgacao ampla.
