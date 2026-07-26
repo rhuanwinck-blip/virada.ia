@@ -106,6 +106,9 @@ test("webhook signatures validate safely", () => {
   const signature = securityModule.signPayload(payload, "secret");
   assert.equal(securityModule.verifyWebhookSignature(payload, signature, "secret"), true);
   assert.equal(securityModule.verifyWebhookSignature(payload, "bad", "secret"), false);
+  assert.equal(securityModule.verifySharedSecretHeader("pluggy-secret", "pluggy-secret"), true);
+  assert.equal(securityModule.verifySharedSecretHeader("Bearer pluggy-secret", "pluggy-secret"), true);
+  assert.equal(securityModule.verifySharedSecretHeader("bad", "pluggy-secret"), false);
   assert.equal(
     securityModule.verifyReplayProtectedSignature({
       payload,
