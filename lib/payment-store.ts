@@ -49,6 +49,36 @@ export function getEntitlementStatus(status: PaymentState | "unknown") {
   return entitlementStatusByPayment[status] ?? "pending";
 }
 
+export async function claimPaymentAccessForUser(input: { userId: string; email: string }) {
+  const supabase = createSupabaseAdminClient();
+  if (!supabase) return { claimed: false, reason: "supabase_admin_not_configured" };
+
+  const email = input.email.trim().toLowerCase();
+  if (!email) return { claimed: false, reason: "missing_email" };
+
+  const now = new Date().toISOString();
+  const entitlementResult = await supabase
+    .from("user_entitlements")
+    .update({ user_id: input.userId, updated_at: now })
+    .is("user_id", null)
+    .ilike("email", email);
+
+  const paymentResult = await supabase
+    .from("payments")
+    .update({ user_id: input.userId, updated_at: now })
+    .is("user_id", null)
+    .ilike("email", email);
+
+  if (entitlementResult.error || paymentResult.error) {
+    return {
+      claimed: false,
+      reason: entitlementResult.error?.message ?? paymentResult.error?.message ?? "claim_failed"
+    };
+  }
+
+  return { claimed: true };
+}
+
 export async function upsertPaymentAccess(input: {
   payment: MercadoPagoPayment;
   rawEvent: Record<string, unknown>;

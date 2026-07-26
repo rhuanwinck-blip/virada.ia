@@ -1,27 +1,31 @@
-import { createBrowserClient, createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-export function createSupabaseBrowserClient() {
+export function getSupabasePublicConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
-  return createBrowserClient(url, key);
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return url && key ? { url, key } : null;
 }
 
 export async function createSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return null;
+  const config = getSupabasePublicConfig();
+  if (!config) return null;
 
   const cookieStore = await cookies();
-  return createServerClient(url, key, {
+  return createServerClient(config.url, config.key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
       setAll(items: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) {
-        items.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+        items.forEach(({ name, value, options }) => {
+          try {
+            cookieStore.set(name, value, options);
+          } catch {
+            // Server Components cannot always persist refreshed auth cookies.
+          }
+        });
       }
     }
   });
