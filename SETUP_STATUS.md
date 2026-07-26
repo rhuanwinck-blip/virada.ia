@@ -1,20 +1,24 @@
 # Setup Status
 
-| Área | Status | Observação |
-| --- | --- | --- |
-| App local | Pronto | Next.js com modo demo |
-| Landing | Pronto | Responsiva, animada e com CTA mobile |
-| Questionário | Pronto | Salva respostas localmente |
-| Scoring | Pronto | Determinístico e testado |
-| IA | Preparado | Fallback ativo sem `OPENAI_API_KEY` |
-| Pagamento | Preparado | Demo aprovado sem credenciais |
-| Webhook | Preparado | Assinatura HMAC exigida fora do demo |
-| Supabase | Preparado | Migration inicial com RLS |
-| E-mail | Preparado | Resend/React Email |
-| Analytics | Preparado | PostHog com propriedades permitidas |
-| Sentry | Preparado | Variáveis no `.env.example` |
-| Admin | Demo funcional | Produção exige autenticação real |
-| GitHub | Bloqueado neste ambiente | Conector não cria repo e `gh` não está instalado |
-| Vercel | Pendente | Exige login/configuração oficial |
+Atualizado em 2026-07-26.
 
-Data de execução: 2026-07-21.
+| Area | Status | Observacao |
+| --- | --- | --- |
+| App producao | Ativo | `https://virada-ia.vercel.app` |
+| GitHub | Atualizado | Repo `rhuanwinck-blip/virada.ia` em `main` |
+| Vercel | Ativo | Deploy de producao pronto |
+| Supabase | Ativo | Migrations principais aplicadas e service role revisado |
+| OpenAI | Ativo | `OPENAI_API_KEY` configurada |
+| Mercado Pago | Ativo | App Virada IA criado, checkout e webhook configurados |
+| Pluggy backend | Ativo | Credenciais, webhook e secret configurados |
+| Pluggy producao | Pendente externo | Solicitacao enviada; aguardando aprovacao da Pluggy |
+| Pluggy dados reais | Pendente externo | Solicitacao enviada; aguardando aprovacao da Pluggy |
+| Pluggy due diligence | Pendente externo | Botao ainda bloqueado no painel |
+| Resend | Ativo basico | Recomenda-se dominio verificado antes de divulgacao ampla |
+| Cron financeiro | Ativo | Protegido por `CRON_SECRET` |
+| Criptografia financeira | Ativo | `FINANCIAL_DATA_ENCRYPTION_KEY` configurada |
+| Observabilidade | Ativo basico | Vercel Analytics e Speed Insights injetados |
+| LGPD/juridico | Pendente humano | Termos, privacidade, consentimento e retencao precisam de revisao |
+| Piloto banco real | Pendente externo | Depende da liberacao Pluggy para dados reais |
+
+Resumo: o tecnico essencial esta conectado. O lancamento oficial com banco real depende de aprovacao Pluggy, due diligence, revisao LGPD e piloto real controlado.
