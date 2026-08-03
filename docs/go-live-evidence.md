@@ -68,4 +68,6 @@ WHATSAPP_ACCESS_TOKEN=...
 WHATSAPP_PHONE_NUMBER_ID=...
 ```
 
+Ultima publicacao operacional: 2026-08-03 20:10 BRT.
+
 Nunca configure uma evidencia como concluida antes do fato existir. O readiness e o contrato operacional do lancamento.
