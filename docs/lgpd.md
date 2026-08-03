@@ -42,3 +42,15 @@ normalizados, mascarados e minimizados.
 - definir prazo formal de retencao;
 - testar exclusao/exportacao com usuario piloto;
 - registrar aprovacao antes do go-live amplo.
+
+## Evidencia Para Readiness
+
+Depois da revisao humana, configurar na Vercel:
+
+```env
+LEGAL_REVIEW_APPROVED_AT=YYYY-MM-DD
+LEGAL_REVIEW_APPROVER=Nome do responsavel juridico
+LEGAL_REVIEW_DOCUMENT_URL=https://link-do-parecer-ou-documento
+```
+
+Nao preencher essas variaveis antes da revisao. O readiness usa esses campos como comprovante operacional.

@@ -2,7 +2,7 @@
 
 Este documento separa o que o codigo ja faz do que depende de credenciais, contrato ou revisao humana.
 
-## Status Atual Em 2026-07-26
+## Status Atual Em 2026-08-03
 
 Ambiente tecnico de producao:
 
@@ -29,6 +29,7 @@ Pendencias de go-live oficial:
 - falta piloto com banco real apos liberacao da Pluggy;
 - falta revisao LGPD/juridica humana;
 - recomendado configurar dominio proprio e dominio verificado no Resend antes de divulgacao ampla.
+- readiness foi atualizado para aceitar evidencias formais de revisao juridica, aprovacao do provider e piloto real sem mascarar bloqueio externo.
 
 ## Estado Atual
 
@@ -79,6 +80,19 @@ Opcionais, mas recomendadas:
 - `WHATSAPP_ACCESS_TOKEN`
 - `WHATSAPP_PHONE_NUMBER_ID`
 
+Evidencias que destravam os tres bloqueios manuais do readiness:
+
+- `LEGAL_REVIEW_APPROVED_AT`
+- `LEGAL_REVIEW_APPROVER`
+- `LEGAL_REVIEW_DOCUMENT_URL`
+- `OPEN_FINANCE_PROVIDER_APPROVED_AT`
+- `OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE`
+- `REAL_DATA_PILOT_COMPLETED_AT`
+- `REAL_DATA_PILOT_REPORT_URL`
+- `RESEND_DOMAIN_VERIFIED=true` quando o dominio do Resend estiver validado
+
+Ver `docs/go-live-evidence.md` antes de preencher qualquer uma dessas variaveis.
+
 ## Supabase
 
 Migrations esperadas em ordem:
@@ -114,6 +128,8 @@ No painel Pluggy:
 - apos liberacao, testar consentimento real com usuario piloto;
 - apos liberacao, testar revogacao via acao `revoke`.
 
+Quando a aprovacao chegar, configurar `OPEN_FINANCE_PROVIDER_APPROVED_AT` e `OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE` na Vercel.
+
 ## Validacao Antes Do Merge
 
 Executar:
@@ -142,3 +158,5 @@ Nada disso pode ser resolvido por codigo sozinho:
 - revisar LGPD, termos, politica de privacidade, retencao e consentimento financeiro com responsavel juridico;
 - configurar dominio proprio e dominio de email verificado no Resend;
 - fazer compra real controlada no Mercado Pago antes de divulgacao ampla.
+
+O roteiro operacional do piloto real esta em `docs/real-data-pilot.md`.

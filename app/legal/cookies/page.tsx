@@ -18,6 +18,16 @@ const sections = [
     title: "Controle",
     body:
       "O usuario pode limitar cookies pelo navegador. Quando exigido por lei ou estrategia de produto, cookies nao essenciais devem depender de consentimento separado."
+  },
+  {
+    title: "Dados sensiveis",
+    body:
+      "Cookies e ferramentas de mensuracao nao devem receber senha, token bancario, CPF completo, cartao completo, extrato bruto ou dados financeiros identificaveis fora dos fluxos protegidos."
+  },
+  {
+    title: "Atualizacao",
+    body:
+      "Mudancas relevantes em cookies nao essenciais, analytics ou observabilidade devem ser refletidas nesta politica e avaliadas na revisao LGPD."
   }
 ];
 

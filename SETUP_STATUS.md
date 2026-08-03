@@ -1,6 +1,6 @@
 # Setup Status
 
-Atualizado em 2026-07-26.
+Atualizado em 2026-08-03.
 
 | Area | Status | Observacao |
 | --- | --- | --- |
@@ -14,11 +14,11 @@ Atualizado em 2026-07-26.
 | Pluggy producao | Pendente externo | Solicitacao enviada; aguardando aprovacao da Pluggy |
 | Pluggy dados reais | Pendente externo | Solicitacao enviada; aguardando aprovacao da Pluggy |
 | Pluggy due diligence | Pendente externo | Botao ainda bloqueado no painel |
-| Resend | Ativo basico | Recomenda-se dominio verificado antes de divulgacao ampla |
+| Resend | Ativo basico | Readiness agora aceita `RESEND_DOMAIN_VERIFIED=true` quando o dominio estiver validado |
 | Cron financeiro | Ativo | Protegido por `CRON_SECRET` |
 | Criptografia financeira | Ativo | `FINANCIAL_DATA_ENCRYPTION_KEY` configurada |
 | Observabilidade | Ativo basico | Vercel Analytics e Speed Insights injetados |
-| LGPD/juridico | Pendente humano | Termos, privacidade, consentimento e retencao precisam de revisao |
-| Piloto banco real | Pendente externo | Depende da liberacao Pluggy para dados reais |
+| LGPD/juridico | Pendente humano | Desbloqueia com `LEGAL_REVIEW_APPROVED_AT` e `LEGAL_REVIEW_APPROVER` apos revisao |
+| Piloto banco real | Pendente externo | Roteiro em `docs/real-data-pilot.md`; desbloqueia com `REAL_DATA_PILOT_COMPLETED_AT` e relatorio |
 
-Resumo: o tecnico essencial esta conectado. O lancamento oficial com banco real depende de aprovacao Pluggy, due diligence, revisao LGPD e piloto real controlado.
+Resumo: o tecnico essencial esta conectado. O lancamento oficial com banco real depende de aprovacao Pluggy, due diligence, revisao LGPD e piloto real controlado. As evidencias que levam o readiness a 100% estao em `docs/go-live-evidence.md`.

@@ -35,6 +35,9 @@ export function buildProductionReadinessReport(): ProductionReadinessReport {
   const openFinanceProduction = env.OPEN_FINANCE_SANDBOX === "false";
   const externalMonitoring = has(env.NEXT_PUBLIC_SENTRY_DSN) && has(env.NEXT_PUBLIC_POSTHOG_KEY);
   const vercelNativeMonitoring = true;
+  const legalReviewApproved = has(env.LEGAL_REVIEW_APPROVED_AT) && has(env.LEGAL_REVIEW_APPROVER);
+  const providerApproved = has(env.OPEN_FINANCE_PROVIDER_APPROVED_AT) && has(env.OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE);
+  const realDataPilotCompleted = has(env.REAL_DATA_PILOT_COMPLETED_AT) && has(env.REAL_DATA_PILOT_REPORT_URL);
   const checks: ReadinessCheck[] = [
     check("app-env", "Ambiente de producao", production, "APP_ENV precisa ser production.", true),
     check("demo-off", "Demo desligado", demoOff, "DEMO_MODE precisa ser false.", true),
@@ -54,12 +57,34 @@ export function buildProductionReadinessReport(): ProductionReadinessReport {
     check("push", "Web Push", has(env.WEB_PUSH_PUBLIC_KEY) && has(env.WEB_PUSH_PRIVATE_KEY), "Chaves VAPID/Web Push liberam lembretes reais.", false),
     check("calendar", "Google Calendar", has(env.GOOGLE_CLIENT_ID) && has(env.GOOGLE_CLIENT_SECRET) && has(env.GOOGLE_REDIRECT_URI), "Credenciais OAuth liberam agenda real.", false),
     check("whatsapp", "WhatsApp", has(env.WHATSAPP_ACCESS_TOKEN) && has(env.WHATSAPP_PHONE_NUMBER_ID), "WhatsApp Cloud API libera canal real.", false),
+    check("email-domain", "Dominio de email verificado", env.RESEND_DOMAIN_VERIFIED === "true", "Configure RESEND_DOMAIN_VERIFIED=true depois de verificar o dominio no Resend.", false),
     check("monitoring", "Observabilidade", externalMonitoring || vercelNativeMonitoring, "Sentry/PostHog externos sao opcionais; Vercel Analytics/Speed Insights estao injetados no layout.", false),
     check("next-safe", "Next.js patched", isAtLeast(nextPackageJson.version, nextMinimum), `Atualize next para >= ${nextMinimum}.`, true),
     check("react-safe", "React patched", isAtLeast(reactPackageJson.version, reactRecommended) && isAtLeast(reactDomPackageJson.version, reactRecommended), `Atualize react/react-dom para >= ${reactRecommended}.`, true),
-    manual("legal-review", "Revisao LGPD/juridica", "Termos, privacidade, consentimento financeiro e retencao precisam de revisao humana antes do go-live.", true),
-    manual("provider-contract", "Contrato Pluggy/Belvo", "Conta/contrato do provider precisa estar ativo com produtos autorizados.", true),
-    manual("real-data-pilot", "Piloto com dados reais", "Rodar teste controlado: conectar, importar, categorizar, revogar e excluir.", true)
+    evidence(
+      "legal-review",
+      "Revisao LGPD/juridica",
+      legalReviewApproved,
+      `Revisao aprovada por ${env.LEGAL_REVIEW_APPROVER} em ${env.LEGAL_REVIEW_APPROVED_AT}.`,
+      "Termos, privacidade, consentimento financeiro e retencao precisam de aprovacao humana. Configure LEGAL_REVIEW_APPROVED_AT e LEGAL_REVIEW_APPROVER somente depois da revisao.",
+      true
+    ),
+    evidence(
+      "provider-contract",
+      "Contrato Pluggy/Belvo",
+      providerApproved,
+      `Provider aprovado em ${env.OPEN_FINANCE_PROVIDER_APPROVED_AT}; referencia ${env.OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE}.`,
+      "Conta/contrato do provider precisa estar ativo com produtos autorizados. Configure OPEN_FINANCE_PROVIDER_APPROVED_AT e OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE quando a Pluggy/Belvo liberar.",
+      true
+    ),
+    evidence(
+      "real-data-pilot",
+      "Piloto com dados reais",
+      realDataPilotCompleted,
+      `Piloto real concluido em ${env.REAL_DATA_PILOT_COMPLETED_AT}; relatorio ${env.REAL_DATA_PILOT_REPORT_URL}.`,
+      "Rodar teste controlado: compra, login, conectar banco, importar, categorizar, sincronizar, revogar e excluir. Configure REAL_DATA_PILOT_COMPLETED_AT e REAL_DATA_PILOT_REPORT_URL depois do teste.",
+      true
+    )
   ];
 
   const blockers = checks.filter((item) => item.required && (item.status === "fail" || item.status === "manual"));
@@ -96,6 +121,18 @@ function manual(id: string, label: string, detail: string, required: boolean): R
     detail,
     required
   };
+}
+
+function evidence(id: string, label: string, passes: boolean, passDetail: string, manualDetail: string, required: boolean): ReadinessCheck {
+  return passes
+    ? {
+        id,
+        label,
+        status: "pass",
+        detail: passDetail,
+        required
+      }
+    : manual(id, label, manualDetail, required);
 }
 
 function has(value: unknown) {

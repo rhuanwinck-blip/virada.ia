@@ -56,7 +56,15 @@ export const envSchema = z.object({
   REPORT_SIGNING_SECRET: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
   DEMO_MODE: z.string().default("true"),
-  APP_ENV: z.string().default("development")
+  APP_ENV: z.string().default("development"),
+  LEGAL_REVIEW_APPROVED_AT: z.string().optional(),
+  LEGAL_REVIEW_APPROVER: z.string().optional(),
+  LEGAL_REVIEW_DOCUMENT_URL: z.string().optional(),
+  OPEN_FINANCE_PROVIDER_APPROVED_AT: z.string().optional(),
+  OPEN_FINANCE_PROVIDER_APPROVAL_REFERENCE: z.string().optional(),
+  REAL_DATA_PILOT_COMPLETED_AT: z.string().optional(),
+  REAL_DATA_PILOT_REPORT_URL: z.string().optional(),
+  RESEND_DOMAIN_VERIFIED: z.string().optional()
 });
 
 export function getRuntimeEnv() {

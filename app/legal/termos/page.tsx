@@ -20,9 +20,19 @@ const sections = [
       "Conexoes bancarias dependem de provedor contratado, consentimento especifico, escopo autorizado e disponibilidade das instituicoes. O usuario pode revogar conexoes e solicitar remocao de dados conforme a Politica de Privacidade."
   },
   {
+    title: "Conta e acesso pago",
+    body:
+      "Areas privadas exigem conta, sessao autenticada e acesso ativo. O acesso pago e vinculado ao e-mail usado no checkout e pode depender da confirmacao do webhook do processador de pagamento."
+  },
+  {
     title: "Pagamentos",
     body:
       "Planos, reembolsos, cancelamentos e meios de pagamento seguem a oferta exibida no checkout e as regras do processador de pagamento. Beneficios pagos so devem ser liberados apos confirmacao valida do pagamento."
+  },
+  {
+    title: "Consentimentos",
+    body:
+      "Marketing, notificacoes, WhatsApp, agenda conectada e dados financeiros exigem consentimentos separados quando aplicavel. O usuario pode revogar consentimentos pelos fluxos do produto ou pelo canal de suporte."
   },
   {
     title: "Uso aceitavel",
@@ -30,9 +40,14 @@ const sections = [
       "O usuario nao deve tentar acessar dados de terceiros, burlar seguranca, enviar conteudo ilegal, explorar falhas, automatizar abuso ou inserir dados bancarios fora dos fluxos oficiais."
   },
   {
+    title: "Disponibilidade",
+    body:
+      "O servico pode passar por manutencao, indisponibilidade de fornecedores ou limitacoes de APIs externas. Incidentes relevantes devem ser investigados com logs, auditoria e comunicacao proporcional ao impacto."
+  },
+  {
     title: "Revisao",
     body:
-      "Estes termos sao minuta operacional e precisam de revisao juridica antes de uso comercial amplo."
+      "Estes termos sao base operacional. Antes de campanha publica ou uso financeiro em escala, a aprovacao juridica deve ser registrada nas evidencias de go-live."
   }
 ];
 
