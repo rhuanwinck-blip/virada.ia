@@ -1,5 +1,10 @@
 import { logEvent } from "@/lib/logger";
-import { fetchMercadoPagoPayment, type PaymentState } from "@/lib/payments";
+import {
+  fetchMercadoPagoPayment,
+  fetchMercadoPagoPaymentsByPreference,
+  type MercadoPagoMerchantOrderPayment,
+  type PaymentState
+} from "@/lib/payments";
 import { upsertPaymentAccess, type PaymentAccessPersistenceResult } from "@/lib/payment-store";
 import { getRuntimeEnv } from "@/lib/security";
 
@@ -29,24 +34,30 @@ export function getMercadoPagoReturnPaymentId(params: MercadoPagoReturnParams) {
 export async function reconcileMercadoPagoReturn(
   params: MercadoPagoReturnParams
 ): Promise<PaymentReturnReconciliation> {
-  const paymentId = getMercadoPagoReturnPaymentId(params);
-  if (!paymentId) {
+  const directPaymentId = getMercadoPagoReturnPaymentId(params);
+  const preferenceId = firstMeaningfulParam(params.preference_id);
+  if (!directPaymentId && !preferenceId) {
     return { checked: false, accessReleased: false, reason: "missing_payment_id" };
   }
 
   const env = getRuntimeEnv();
   if (env.DEMO_MODE !== "false" || !env.MERCADO_PAGO_ACCESS_TOKEN) {
-    return { checked: false, accessReleased: false, paymentId, reason: "payment_lookup_disabled" };
+    return { checked: false, accessReleased: false, paymentId: directPaymentId, reason: "payment_lookup_disabled" };
   }
 
   try {
+    const paymentId = directPaymentId ?? (await resolvePaymentIdFromPreference(preferenceId));
+    if (!paymentId) {
+      return { checked: true, accessReleased: false, reason: "payment_not_found_for_preference" };
+    }
+
     const payment = await fetchMercadoPagoPayment(paymentId);
     const persistence = await upsertPaymentAccess({
       payment,
       rawEvent: {
         source: "mercado_pago_return",
         paymentId,
-        preferenceId: firstMeaningfulParam(params.preference_id),
+        preferenceId,
         reportedStatus: firstMeaningfulParam(params.status),
         reportedCollectionStatus: firstMeaningfulParam(params.collection_status)
       }
@@ -69,17 +80,29 @@ export async function reconcileMercadoPagoReturn(
     };
   } catch (error) {
     logEvent("error", "payment_return_reconcile_failed", {
-      paymentId,
+      paymentId: directPaymentId,
+      preferenceId,
       error: error instanceof Error ? error.message : String(error)
     });
 
     return {
       checked: true,
       accessReleased: false,
-      paymentId,
+      paymentId: directPaymentId,
       reason: "payment_lookup_failed"
     };
   }
+}
+
+async function resolvePaymentIdFromPreference(preferenceId: string | undefined) {
+  if (!preferenceId) return undefined;
+
+  const payments = await fetchMercadoPagoPaymentsByPreference(preferenceId);
+  return chooseBestPayment(payments)?.id;
+}
+
+function chooseBestPayment(payments: MercadoPagoMerchantOrderPayment[]) {
+  return payments.find((payment) => payment.status === "approved") ?? payments[0];
 }
 
 function firstMeaningfulParam(value: SearchParamValue) {

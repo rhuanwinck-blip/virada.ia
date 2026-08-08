@@ -39,6 +39,11 @@ export type MercadoPagoPayment = {
   metadata?: Record<string, unknown>;
 };
 
+export type MercadoPagoMerchantOrderPayment = {
+  id: string;
+  status: PaymentState | "unknown";
+};
+
 const checkoutPlans = {
   "one-time": {
     id: "virada-30",
@@ -180,6 +185,45 @@ export async function fetchMercadoPagoPayment(paymentId: string): Promise<Mercad
     dateApproved: payment.date_approved,
     metadata: payment.metadata
   };
+}
+
+export async function fetchMercadoPagoPaymentsByPreference(
+  preferenceId: string
+): Promise<MercadoPagoMerchantOrderPayment[]> {
+  const env = getRuntimeEnv();
+  if (!env.MERCADO_PAGO_ACCESS_TOKEN) {
+    throw new Error("missing_mercado_pago_access_token");
+  }
+
+  const url = new URL("https://api.mercadopago.com/merchant_orders/search");
+  url.searchParams.set("preference_id", preferenceId);
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${env.MERCADO_PAGO_ACCESS_TOKEN}`
+    }
+  });
+  const result = (await response.json().catch(() => ({}))) as {
+    elements?: Array<{
+      payments?: Array<{
+        id?: string | number;
+        status?: string;
+      }>;
+    }>;
+    message?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(`mercado_pago_merchant_order_search_failed:${response.status}:${result.message ?? "unknown"}`);
+  }
+
+  return (result.elements ?? [])
+    .flatMap((order) => order.payments ?? [])
+    .filter((payment) => payment.id != null)
+    .map((payment) => ({
+      id: String(payment.id),
+      status: isPaymentState(payment.status) ? payment.status : "unknown"
+    }));
 }
 
 function readMetadataString(value: unknown) {
