@@ -70,6 +70,7 @@ const securityModule = loadTs(path.join(root, "lib/security.ts"));
 const assistantCoreModule = loadTs(path.join(root, "lib/assistant-core.ts"));
 const financialProviderModule = loadTs(path.join(root, "lib/financial-provider.ts"));
 const financialSyncModule = loadTs(path.join(root, "lib/financial-sync.ts"));
+const paymentReturnModule = loadTs(path.join(root, "lib/payment-return.ts"));
 const paymentStoreModule = loadTs(path.join(root, "lib/payment-store.ts"));
 const personalOsModule = loadTs(path.join(root, "lib/personal-os.ts"));
 const productionReadinessModule = loadTs(path.join(root, "lib/production-readiness.ts"));
@@ -164,6 +165,13 @@ test("payment access references and entitlements are deterministic", () => {
     paymentStoreModule.getAccessExpiresAt("one-time", new Date("2026-07-01T00:00:00.000Z")),
     /^2026-07-31T00:00:00\.000Z$/
   );
+});
+
+test("Mercado Pago return payment id is read safely", () => {
+  assert.equal(paymentReturnModule.getMercadoPagoReturnPaymentId({ payment_id: "123", collection_id: "456" }), "123");
+  assert.equal(paymentReturnModule.getMercadoPagoReturnPaymentId({ payment_id: "null", collection_id: "456" }), "456");
+  assert.equal(paymentReturnModule.getMercadoPagoReturnPaymentId({ payment_id: ["789"] }), "789");
+  assert.equal(paymentReturnModule.getMercadoPagoReturnPaymentId({ collection_id: "undefined" }), undefined);
 });
 
 test("assistant navigation matches the proactive product map", () => {

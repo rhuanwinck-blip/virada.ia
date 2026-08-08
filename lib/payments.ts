@@ -114,7 +114,8 @@ export async function createCheckoutSession(input: CheckoutInput): Promise<Check
       metadata: {
         plan: input.plan,
         diagnostic_id: input.diagnosticId,
-        context_id: input.contextId
+        context_id: input.contextId,
+        checkout_email: input.email?.trim().toLowerCase()
       }
     })
   });
@@ -173,10 +174,14 @@ export async function fetchMercadoPagoPayment(paymentId: string): Promise<Mercad
     externalReference: payment.external_reference,
     rawStatus: payment.status,
     statusDetail: payment.status_detail,
-    email: payment.payer?.email,
+    email: payment.payer?.email ?? readMetadataString(payment.metadata?.checkout_email),
     transactionAmount: payment.transaction_amount,
     currencyId: payment.currency_id,
     dateApproved: payment.date_approved,
     metadata: payment.metadata
   };
+}
+
+function readMetadataString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
