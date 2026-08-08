@@ -448,7 +448,7 @@ export class PluggyFinancialDataProvider implements FinancialDataProvider {
         "x-api-key": apiKey
       },
       body: JSON.stringify({
-        itemId: input.connectionId,
+        itemId: input.connectionId ? resolveProviderItemId(input.connectionId) : undefined,
         options: {
           clientUserId,
           webhookUrl: input.webhookUrl,

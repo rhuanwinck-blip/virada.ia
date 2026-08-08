@@ -84,6 +84,62 @@ const areaIcons: Record<PersonalOsAreaId, typeof Command> = {
 type InboxClassification = ReturnType<typeof classifyUniversalInboxInput> & { source: string };
 
 const financeValues = [22, 34, 28, 42, 38, 58, 49, 68, 61, 74, 69, 88];
+const pluggySdkUrl = "https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js";
+
+type PluggyItemPayload = {
+  id?: string;
+  status?: string;
+  executionStatus?: string;
+  connector?: {
+    id?: string | number;
+    name?: string;
+    institutionName?: string;
+  };
+};
+
+type PluggyConnectOptions = {
+  connectToken: string;
+  includeSandbox?: boolean;
+  forceOauthInBrowser?: boolean;
+  onSuccess?: (data: { item?: PluggyItemPayload }) => void | Promise<void>;
+  onError?: (error: { message?: string; data?: { item?: PluggyItemPayload } }) => void | Promise<void>;
+  onClose?: () => void | Promise<void>;
+  onEvent?: (payload: { event?: string; item?: PluggyItemPayload }) => void | Promise<void>;
+};
+
+type PluggyConnectInstance = {
+  init: () => void | Promise<void>;
+  destroy?: () => void | Promise<void>;
+};
+
+declare global {
+  interface Window {
+    PluggyConnect?: new (options: PluggyConnectOptions) => PluggyConnectInstance;
+  }
+}
+
+function loadPluggyConnectSdk() {
+  return new Promise<void>((resolve, reject) => {
+    if (window.PluggyConnect) {
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${pluggySdkUrl}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("pluggy_sdk_load_failed")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = pluggySdkUrl;
+    script.async = true;
+    script.onload = () => (window.PluggyConnect ? resolve() : reject(new Error("pluggy_sdk_missing")));
+    script.onerror = () => reject(new Error("pluggy_sdk_load_failed"));
+    document.head.appendChild(script);
+  });
+}
 
 export function DashboardClient() {
   const searchParams = useSearchParams();
@@ -170,7 +226,81 @@ export function DashboardClient() {
     setInboxInput("");
   }
 
-  async function startBankConnection() {
+  async function startBankConnection(connectionId?: string) {
+    setConnectionStatus("conectando");
+    setConnectionMessage("Criando connect token temporario no backend...");
+
+    try {
+      const tokenResponse = await fetch("/api/finance/connect-token", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ redirectUrl: `${window.location.origin}/dashboard?openFinance=connected`, connectionId })
+      }).then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error ?? "pluggy_connect_token_failed");
+        return data as {
+          connectToken?: string;
+          mode?: "sandbox" | "production";
+          sandbox?: boolean;
+        };
+      });
+
+      setConnectionStatus("aguardando_consentimento");
+
+      if (tokenResponse.mode !== "production" || tokenResponse.sandbox) {
+        await startBankConnectionSandbox();
+        return;
+      }
+
+      if (!tokenResponse.connectToken) {
+        throw new Error("pluggy_connect_token_missing");
+      }
+      const connectToken = tokenResponse.connectToken;
+
+      setConnectionMessage("Abrindo Pluggy Connect oficial. O Virada IA nao ve nem guarda senha bancaria.");
+      await loadPluggyConnectSdk();
+      const PluggyConnect = window.PluggyConnect;
+      if (!PluggyConnect) throw new Error("pluggy_sdk_missing");
+
+      const pluggyConnect = new PluggyConnect({
+        connectToken,
+        includeSandbox: false,
+        forceOauthInBrowser: true,
+        onSuccess: async ({ item }) => {
+          if (!item?.id) throw new Error("pluggy_item_id_missing");
+          await savePluggyItem(item, connectToken);
+        },
+        onError: async (error) => {
+          const item = error.data?.item;
+          if (item?.id) {
+            await savePluggyItem(item, connectToken, error.message);
+            return;
+          }
+
+          setConnectionStatus("atencao_necessaria");
+          setConnectionMessage(error.message ?? "A Pluggy nao concluiu a conexao. Tente novamente pelo widget oficial.");
+        },
+        onClose: () => {
+          setConnectionMessage("Widget Pluggy fechado. Se o banco concluir depois, o webhook continua registrando o evento no backend.");
+        },
+        onEvent: (payload) => {
+          if (payload.event === "SELECTED_INSTITUTION") {
+            setConnectionMessage("Instituicao selecionada na Pluggy. Continue o consentimento no ambiente oficial do banco.");
+          }
+          if (payload.event === "LOGIN_STEP_COMPLETED" || payload.event === "ITEM_RESPONSE") {
+            setConnectionMessage("Consentimento recebido pela Pluggy. Salvando item quando a confirmacao chegar.");
+          }
+        }
+      });
+
+      await pluggyConnect.init();
+    } catch (error) {
+      setConnectionStatus("atencao_necessaria");
+      setConnectionMessage(error instanceof Error ? error.message : "Nao foi possivel iniciar a conexao Pluggy.");
+    }
+  }
+
+  async function startBankConnectionSandbox() {
     setConnectionStatus("conectando");
     setConnectionMessage("Criando token temporário no backend...");
 
@@ -207,6 +337,34 @@ export function DashboardClient() {
     ]);
     setConnectionStatus("conectada");
     setConnectionMessage("Backend validou a conexão sandbox, sincronizou contas, saldos, transações, cartões, faturas e investimentos de exemplo.");
+  }
+
+  async function savePluggyItem(item: PluggyItemPayload, connectToken: string, errorMessage?: string) {
+    if (!item.id) throw new Error("pluggy_item_id_missing");
+
+    setConnectionMessage("Item Pluggy recebido. Salvando referencia segura no backend...");
+    const connectionResponse = await fetch("/api/finance/connections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        providerItemId: item.id,
+        institutionId: String(item.connector?.id ?? "pluggy-production"),
+        connectToken
+      })
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "pluggy_connection_save_failed");
+      return data as { connection: FinancialConnection; message?: string };
+    });
+
+    setConnections((items) => upsertConnection(items, connectionResponse.connection));
+    setConnectionStatus(connectionResponse.connection.status);
+    setFinanceTab(financeTabs.find((tab) => tab.toLowerCase().startsWith("conex")) ?? financeTab);
+    setConnectionMessage(
+      errorMessage
+        ? `Item ${item.id} salvo para acompanhamento. A Pluggy informou: ${errorMessage}`
+        : connectionResponse.message ?? `Item ${item.id} salvo. Sincronizacao seguira pelo backend e webhooks.`
+    );
   }
 
   async function refreshConnection(connectionId: string) {
@@ -536,7 +694,7 @@ export function DashboardClient() {
           <HolographicPanel label="Conexão bancária">
             <OpenFinanceFlow activeStep={connectionStatus === "conectada" ? 5 : connectionStatus === "aguardando_consentimento" ? 2 : 1} />
             <p className="premium-copy">{connectionMessage}</p>
-            <button className="button" type="button" onClick={startBankConnection}>
+            <button className="button" type="button" onClick={() => startBankConnection()}>
               Conectar conta bancária <Banknote size={17} />
             </button>
           </HolographicPanel>
@@ -575,7 +733,7 @@ export function DashboardClient() {
                   <button className="button secondary" type="button" onClick={() => refreshConnection(connection.id)}>
                     Atualizar <RefreshCcw size={16} />
                   </button>
-                  <button className="button secondary" type="button" onClick={() => refreshConnection(connection.id)}>
+                  <button className="button secondary" type="button" onClick={() => startBankConnection(connection.id)}>
                     Reconectar <Zap size={16} />
                   </button>
                   <button className="button ghost" type="button" onClick={() => revokeConnection(connection.id)}>
@@ -926,6 +1084,12 @@ function sumCategory(transactions: FinancialTransaction[], category: FinancialCa
       .filter((transaction) => transaction.category === category && transaction.type === "saida")
       .reduce((sum, transaction) => sum + transaction.amount.amount, 0)
   );
+}
+
+function upsertConnection(items: FinancialConnection[], connection: FinancialConnection) {
+  const existing = items.find((item) => item.id === connection.id || item.providerItemId === connection.providerItemId);
+  if (!existing) return [connection, ...items];
+  return items.map((item) => (item.id === existing.id ? connection : item));
 }
 
 function sentenceCase(value: string) {
