@@ -28,7 +28,7 @@ export function AccessRequired({ email, nextPath, paymentState, reason }: Access
             <h1>{paymentApproved ? "Entre com o mesmo e-mail usado no Mercado Pago." : "Esta area agora precisa de conta."}</h1>
             <p className="premium-copy">
               {paymentApproved
-                ? "Assim que o webhook confirmar o pagamento, o acesso aparece aqui automaticamente. Use o mesmo e-mail informado no checkout."
+                ? "Voce nao precisa ter senha cadastrada. Use o e-mail da compra para receber um link seguro e ativar o acesso."
                 : "Dashboard, onboarding e dados financeiros ficam fechados por sessao Supabase e acesso ativo."}
             </p>
             {email ? (
@@ -42,8 +42,8 @@ export function AccessRequired({ email, nextPath, paymentState, reason }: Access
               </div>
             ) : null}
             <div className="inline-actions" style={{ marginTop: 20 }}>
-              <Link className="button" href={`/login?next=${encodeURIComponent(nextPath)}`}>
-                Entrar ou criar conta <LogIn size={17} />
+              <Link className="button" href={`/login?mode=acesso&next=${encodeURIComponent(nextPath)}${paymentApproved ? "&state=payment-approved" : ""}`}>
+                Receber link de acesso <LogIn size={17} />
               </Link>
               <Link className="button secondary" href="/checkout">
                 Comprar acesso <CreditCard size={17} />
@@ -67,8 +67,8 @@ export function AccessRequired({ email, nextPath, paymentState, reason }: Access
                 <span>O acesso fica vinculado ao e-mail usado no checkout.</span>
               </div>
               <div className="stack-item">
-                <strong>3. Login</strong>
-                <span>Ao entrar com esse e-mail, o dashboard e o onboarding liberam.</span>
+                <strong>3. Ativacao</strong>
+                <span>O link de e-mail cria a sessao e libera dashboard e onboarding.</span>
               </div>
             </div>
           </HolographicPanel>

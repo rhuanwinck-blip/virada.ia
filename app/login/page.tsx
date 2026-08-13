@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   const notice =
     params?.state === "payment-approved"
-      ? "Pagamento recebido. Entre ou crie conta com o mesmo e-mail usado no Mercado Pago."
+      ? "Pagamento recebido. Ative o acesso com o mesmo e-mail usado no Mercado Pago."
       : params?.state === "signed-out"
         ? "Voce saiu da conta com seguranca."
         : params?.state === "callback-error"
@@ -26,5 +26,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             ? "Esta conta ainda nao tem acesso ativo. Use o mesmo e-mail da compra ou compre um acesso."
             : undefined;
 
-  return <LoginClient initialMode={params?.mode === "cadastro" ? "cadastro" : "login"} nextPath={nextPath} notice={notice} />;
+  const initialMode = params?.state === "payment-approved" || params?.mode === "acesso"
+    ? "acesso"
+    : params?.mode === "cadastro"
+      ? "cadastro"
+      : "login";
+
+  return <LoginClient initialMode={initialMode} nextPath={nextPath} notice={notice} />;
 }

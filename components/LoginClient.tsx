@@ -6,8 +6,10 @@ import { ArrowRight, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-re
 import { HolographicPanel, StatusPill } from "@/components/AssessorVisuals";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
+type LoginMode = "acesso" | "login" | "cadastro";
+
 type LoginClientProps = {
-  initialMode: "login" | "cadastro";
+  initialMode: LoginMode;
   nextPath: string;
   notice?: string;
 };
@@ -36,6 +38,26 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    if (mode === "acesso") {
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNextPath)}`
+        }
+      });
+
+      if (otpError) {
+        setIsSubmitting(false);
+        setError(formatAuthError(otpError.message));
+        return;
+      }
+
+      setIsSubmitting(false);
+      setMessage("Enviamos um link de acesso para seu e-mail. Abra o e-mail neste mesmo navegador para liberar sua conta.");
+      return;
+    }
+
     const authResult =
       mode === "login"
         ? await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
@@ -56,7 +78,7 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
 
     if (mode === "cadastro" && !authResult.data.session) {
       setIsSubmitting(false);
-      setMessage("Conta criada. Confirme seu e-mail e depois volte para entrar.");
+      setMessage("Senha criada. Confirme seu e-mail e depois volte para entrar.");
       return;
     }
 
@@ -77,15 +99,18 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
             <span className="eyebrow">
               <LockKeyhole size={15} /> Acesso seguro
             </span>
-            <h1>{mode === "login" ? "Entre para continuar." : "Crie sua conta para ativar o acesso."}</h1>
-            <p className="premium-copy">Use o mesmo e-mail informado no Mercado Pago para liberar onboarding, dashboard e financeiro.</p>
+            <h1>{getModeTitle(mode)}</h1>
+            <p className="premium-copy">{getModeCopy(mode)}</p>
 
             <div className="inline-actions" role="tablist" aria-label="Modo de acesso" style={{ margin: "22px 0 18px" }}>
+              <button className={`button ${mode === "acesso" ? "" : "secondary"}`} type="button" onClick={() => setMode("acesso")}>
+                Acesso por e-mail
+              </button>
               <button className={`button ${mode === "login" ? "" : "secondary"}`} type="button" onClick={() => setMode("login")}>
-                Entrar
+                Tenho senha
               </button>
               <button className={`button ${mode === "cadastro" ? "" : "secondary"}`} type="button" onClick={() => setMode("cadastro")}>
-                Criar conta
+                Criar senha
               </button>
             </div>
 
@@ -108,19 +133,21 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
                   value={email}
                 />
               </label>
-              <label className="field">
-                <span>Senha</span>
-                <input
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  disabled={isSubmitting}
-                  minLength={6}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Minimo 6 caracteres"
-                  required
-                  type="password"
-                  value={password}
-                />
-              </label>
+              {mode !== "acesso" ? (
+                <label className="field">
+                  <span>Senha</span>
+                  <input
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    disabled={isSubmitting}
+                    minLength={6}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Minimo 6 caracteres"
+                    required
+                    type="password"
+                    value={password}
+                  />
+                </label>
+              ) : null}
               {message ? (
                 <div className="notice" role="status">
                   <ShieldCheck size={18} /> {message}
@@ -132,7 +159,7 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
                 </div>
               ) : null}
               <button className="button" disabled={isSubmitting} type="submit">
-                {isSubmitting ? "Validando acesso..." : mode === "login" ? "Entrar" : "Criar conta"} <ArrowRight size={17} />
+                {isSubmitting ? "Validando acesso..." : getSubmitLabel(mode)} <ArrowRight size={17} />
               </button>
             </form>
           </HolographicPanel>
@@ -147,8 +174,8 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
                 <span>O webhook grava o acesso para o e-mail do comprador.</span>
               </div>
               <div className="stack-item">
-                <strong>Criou ou entrou na conta</strong>
-                <span>O Supabase Auth cria a sessao segura no navegador.</span>
+                <strong>Ativou por e-mail</strong>
+                <span>O link seguro cria a sessao sem exigir uma senha antiga.</span>
               </div>
               <div className="stack-item">
                 <strong>Dashboard liberado</strong>
@@ -156,13 +183,31 @@ export function LoginClient({ initialMode, nextPath, notice }: LoginClientProps)
               </div>
             </div>
             <div className="notice" style={{ marginTop: 18 }}>
-              <UserRound size={18} /> Ja comprou? Entre com o e-mail usado no checkout.
+              <UserRound size={18} /> Ja comprou? Use o mesmo e-mail do checkout para receber o link.
             </div>
           </HolographicPanel>
         </section>
       </div>
     </main>
   );
+}
+
+function getModeTitle(mode: LoginMode) {
+  if (mode === "acesso") return "Ative seu acesso pelo e-mail da compra.";
+  if (mode === "cadastro") return "Crie sua senha para entrar.";
+  return "Entre com sua senha.";
+}
+
+function getModeCopy(mode: LoginMode) {
+  if (mode === "acesso") return "Nao precisa ter senha cadastrada. Enviamos um link seguro para o e-mail usado no Mercado Pago.";
+  if (mode === "cadastro") return "Use o mesmo e-mail do Mercado Pago e escolha uma senha para proximos acessos.";
+  return "Use esta opcao apenas se voce ja criou uma senha antes.";
+}
+
+function getSubmitLabel(mode: LoginMode) {
+  if (mode === "acesso") return "Enviar link de acesso";
+  if (mode === "cadastro") return "Criar senha";
+  return "Entrar";
 }
 
 function normalizeClientNextPath(value: string) {
